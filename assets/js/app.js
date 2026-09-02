@@ -186,7 +186,6 @@ async function loadProducts() {
             };
         });
         renderProducts();
-        checkDirectProductLink();
     } catch (error) {
         console.error("Products error:", error);
         box.innerHTML = `
@@ -196,18 +195,6 @@ async function loadProducts() {
                 <small>${esc(error.message)}</small>
             </div>
         `;
-    }
-}
-
-/* التحقق من الرابط المباشر للمنتج */
-function checkDirectProductLink() {
-    const hash = window.location.hash;
-    if (hash.startsWith("#product=")) {
-        const id = hash.split("=")[1];
-        const target = products.find(p => String(p.id) === String(id));
-        if (target) {
-            showProduct(target);
-        }
     }
 }
 
@@ -303,9 +290,9 @@ function renderProducts() {
                         ? `<small style="display:block;margin:6px 0;color:var(--gold-main);">${sizes.map(s => `${s.size_ml} ml`).join(" • ")}</small>`
                         : ""
                     }
-                    <button onclick='showProduct(${JSON.stringify(product).replace(/</g, "\\u003c")})'>
-                        عرض المنتج
-                    </button>
+                    <a href="product.html?id=${product.id}" class="card-btn-link">
+                        عرض تفاصيل العطر 🛍️
+                    </a>
                 </div>
             </article>
         `;
@@ -334,164 +321,8 @@ function handleSearch() {
 }
 
 /* =========================
-   PRODUCT DETAILS
-========================= */
-
-function showProduct(product) {
-    current = product;
-    qty = 1;
-    currentSize = product.sizes?.[0] || null;
-    history.replaceState(null, "", `#product=${product.id}`);
-    renderProduct();
-    document.getElementById("modal").classList.add("show");
-}
-
-function copyProductLink(id) {
-    const link = `${window.location.origin}${window.location.pathname}#product=${id}`;
-    navigator.clipboard.writeText(link).then(() => {
-        const btn = document.getElementById("copyLinkBtn");
-        if (btn) btn.innerHTML = "✅ تم نسخ الرابط بنجاح!";
-        setTimeout(() => {
-            if (btn) btn.innerHTML = "🔗 نسخ رابط العطر للمشاركة";
-        }, 2200);
-    });
-}
-
-function renderProduct() {
-    const modalContent = document.getElementById("modalContent");
-    if (!modalContent || !current) return;
-
-    const sizes = current.sizes || [];
-    const image = current.image || "assets/images/logo.jpg";
-
-    modalContent.innerHTML = `
-        <div class="detail">
-            <img
-                src="${esc(image)}"
-                alt="${esc(current.name)}"
-                onerror="this.onerror=null;this.src='assets/images/logo.jpg'"
-            >
-            <div>
-                <small>${labels[current.category] || ""}</small>
-                <h2>${esc(current.name)}</h2>
-
-                <button id="copyLinkBtn" class="share-btn" onclick="copyProductLink(${current.id})">
-                    🔗 نسخ رابط العطر للمشاركة
-                </button>
-
-                ${storeSettings?.offer_enabled ? `<div style="background:rgba(214,179,75,0.15);color:var(--gold-main);border:1px solid var(--gold-main);padding:6px 12px;border-radius:6px;font-size:13px;font-weight:bold;margin:0 0 10px;display:inline-block;">🎁 مشمول في عرض: اشتري 2 واحصل على 1 هدية مجاناً!</div>` : ""}
-                <p style="color:var(--text-muted);">${esc(current.description || "")}</p>
-                <h3>اختر الحجم</h3>
-                <div class="sizes">
-                    ${
-                        sizes.length
-                        ? sizes.map(size => {
-                            const original = Number(size.price || 0);
-                            const final = fp(size);
-                            const hasDiscount = size.discount_enabled && final < original;
-                            return `
-                                <button
-                                    class="${Number(currentSize?.id) === Number(size.id) ? "sel" : ""}"
-                                    onclick="pickSize(${size.id})"
-                                >
-                                    <b>${size.size_ml} ml</b>
-                                    ${
-                                        hasDiscount
-                                        ? `<del>${money(original)}</del><strong>${money(final)}</strong>`
-                                        : `<strong>${money(final)}</strong>`
-                                    }
-                                </button>
-                            `;
-                        }).join("")
-                        : `<p>لا توجد أحجام متاحة.</p>`
-                    }
-                </div>
-                <div class="qty">
-                    <button onclick="qty = Math.max(1, qty - 1); renderProduct();">−</button>
-                    <b>${qty}</b>
-                    <button onclick="qty++; renderProduct();">+</button>
-                </div>
-                <button
-                    class="gold full"
-                    onclick="add()"
-                    ${!currentSize ? "disabled" : ""}
-                >
-                    🛒 إضافة للسلة
-                </button>
-            </div>
-        </div>
-    `;
-}
-
-function pickSize(id) {
-    currentSize = current.sizes.find(size => Number(size.id) === Number(id));
-    renderProduct();
-}
-
-/* =========================
    CART & ACTION PROMPT
 ========================= */
-
-function add() {
-    if (!currentSize) {
-        alert("من فضلك اختر الحجم أولًا");
-        return;
-    }
-    const existing = cart.find(item =>
-        Number(item.product.id) === Number(current.id) &&
-        Number(item.size.id) === Number(currentSize.id)
-    );
-    if (existing) {
-        existing.qty += qty;
-    } else {
-        cart.push({
-            product: {
-                id: current.id,
-                name: current.name,
-                image: current.image
-            },
-            size: currentSize,
-            qty: qty
-        });
-    }
-    save();
-    showAddedConfirmation();
-}
-
-function showAddedConfirmation() {
-    const modalContent = document.getElementById("modalContent");
-    const { totalQty, finalTotal, earnedFreeGifts } = calcCartTotal();
-
-    modalContent.innerHTML = `
-        <div style="text-align:center; padding: 25px 15px;">
-            <div style="font-size:45px; margin-bottom:10px;">🎉</div>
-            <h2 style="color:var(--gold-main); margin:0 0 8px;">تمت إضافة العطر إلى السلة!</h2>
-            <p style="color:var(--text-muted); font-size:15px; margin:0 0 15px;">
-                <b>${esc(current.name)}</b> (${currentSize.size_ml} ml) × ${qty}
-            </p>
-
-            ${earnedFreeGifts > 0 ? `
-                <div style="background:rgba(34,197,94,0.12);border:1px solid #22c55e;padding:10px;border-radius:8px;color:#4ade80;font-size:13px;font-weight:bold;margin-bottom:15px;">
-                    🎁 مبروك! طلبك أصبح مؤهلاً للحصول على (${earnedFreeGifts}) قطعة هدية مجاناً!
-                </div>
-            ` : ""}
-
-            <div style="background:var(--bg-surface-elevated); padding:12px; border-radius:8px; border:1px solid var(--border-color); margin-bottom:20px; font-size:14px;">
-                عدد القطع بالسلة الآن: <b>${totalQty}</b> | الإجمالي: <b style="color:var(--gold-main);">${money(finalTotal)}</b>
-            </div>
-
-            <div class="added-actions">
-                <button class="btn-continue" onclick="closeModal()">
-                    🛍️ إكمال التسوق
-                </button>
-                <button class="btn-checkout" onclick="showCart()">
-                    💳 إتمام الشراء
-                </button>
-            </div>
-        </div>
-    `;
-    document.getElementById("modal").classList.add("show");
-}
 
 function save() {
     localStorage.setItem("wissam_cart", JSON.stringify(cart));
@@ -863,9 +694,6 @@ function closeModal() {
     const modal = document.getElementById("modal");
     if (modal) {
         modal.classList.remove("show");
-    }
-    if (window.location.hash.startsWith("#product=")) {
-        history.replaceState(null, "", window.location.pathname);
     }
 }
 
