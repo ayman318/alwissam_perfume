@@ -63,40 +63,24 @@ function discountAmount(size) {
     return discount;
 }
 
-/* حساب إجمالي السلة مع العرض الترويجي (مثال: اشترِ 2 والتالتة هدية) */
+/* حساب إجمالي السلة: مجموع أسعار القطع فقط واحتساب عدد الهدايا المستحقة تلقائياً */
 function calcCartTotal() {
     let subtotal = cart.reduce((sum, item) => sum + fp(item.size) * Number(item.qty), 0);
     let totalQty = cart.reduce((sum, item) => sum + Number(item.qty), 0);
-    let freeCount = 0;
-    let offerDiscount = 0;
+    let earnedFreeGifts = 0;
 
-    if (storeSettings?.offer_enabled && storeSettings?.offer_buy_qty) {
-        const buy = Number(storeSettings.offer_buy_qty);
-        const free = Number(storeSettings.offer_free_qty || 1);
-        const bundle = buy + free;
-        
-        const bundles = Math.floor(totalQty / bundle);
-        freeCount = bundles * free;
-
-        if (freeCount > 0) {
-            let unitPrices = [];
-            cart.forEach(item => {
-                const price = fp(item.size);
-                for (let i = 0; i < item.qty; i++) {
-                    unitPrices.push(price);
-                }
-            });
-            unitPrices.sort((a, b) => a - b);
-            offerDiscount = unitPrices.slice(0, freeCount).reduce((a, b) => a + b, 0);
-        }
+    // بمجرد وصول عدد أي قطع بالسلة إلى 2، يحصل على 1 هدية (وإذا 4 يحصل على 2، وهكذا)
+    if (storeSettings?.offer_enabled) {
+        const buyStep = Number(storeSettings.offer_buy_qty || 2);
+        const freeStep = Number(storeSettings.offer_free_qty || 1);
+        earnedFreeGifts = Math.floor(totalQty / buyStep) * freeStep;
     }
 
     return {
         subtotal,
         totalQty,
-        freeCount,
-        offerDiscount,
-        finalTotal: Math.max(0, subtotal - offerDiscount)
+        earnedFreeGifts,
+        finalTotal: subtotal
     };
 }
 
@@ -124,12 +108,13 @@ async function loadSettings() {
         document.querySelectorAll(".store-name").forEach(el => el.textContent = storeName);
         document.querySelectorAll(".tagline").forEach(el => el.textContent = tagline);
 
-        // ربط الزر العائم برقم الواتساب المحفوظ
+        // ربط الزر العائم برقم الواتساب
         const whatsappNumber = normalizeWhatsApp(storeSettings?.whatsapp);
         const floatingBtn = document.getElementById("floatingWhatsapp");
         if (floatingBtn && whatsappNumber) {
             floatingBtn.href = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent("مرحباً، أود الاستفسار عن عطور الوسام 🌸")}`;
         }
+        renderProducts();
     } catch (error) {
         console.error("Settings error:", error);
     }
@@ -179,7 +164,7 @@ async function loadProducts() {
 }
 
 /* =========================
-   PRODUCT CARDS & LIVE SEARCH
+   PRODUCT CARDS & LIVE SEARCH (مع الشارات)
 ========================= */
 
 function renderProducts() {
@@ -202,11 +187,19 @@ function renderProducts() {
         const firstSize = sizes[0];
 
         let priceHTML = "";
+        let hasDiscount = false;
+        let discountLabel = "";
+
         if (firstSize) {
             const finalPrice = fp(firstSize);
             const originalPrice = Number(firstSize.price || 0);
 
             if (firstSize.discount_enabled && finalPrice < originalPrice) {
+                hasDiscount = true;
+                discountLabel = firstSize.discount_type === "percent" 
+                    ? `خصم ${firstSize.discount_value}%` 
+                    : `خصم ${firstSize.discount_value} ج`;
+
                 priceHTML = `
                     <div class="price-box">
                         <del>${money(originalPrice)}</del>
@@ -226,6 +219,14 @@ function renderProducts() {
 
         const image = product.image || "assets/images/logo.jpg";
 
+        // شارات العرض والخصم
+        const offerBadge = storeSettings?.offer_enabled 
+            ? `<span class="badge-offer">🎁 اشتري 2 وخد 1 هدية</span>` 
+            : "";
+        const discountBadge = hasDiscount 
+            ? `<span class="badge-discount">${discountLabel}</span>` 
+            : "";
+
         return `
             <article
                 class="card"
@@ -233,6 +234,10 @@ function renderProducts() {
                 data-name="${esc(product.name).toLowerCase()}"
                 style="animation-delay: ${index * 0.08}s"
             >
+                <div class="badges-container">
+                    ${offerBadge}
+                    ${discountBadge}
+                </div>
                 <img
                     src="${esc(image)}"
                     alt="${esc(product.name)}"
@@ -269,7 +274,7 @@ function handleSearch() {
         if (matchCategory && matchName) {
             card.style.display = "";
             card.style.animation = "none";
-            card.offsetHeight; // إعادة تفعيل الحركة
+            card.offsetHeight;
             card.style.animation = `cardEntrance .5s cubic-bezier(.16,1,.3,1) ${visibleIndex * 0.06}s backwards`;
             visibleIndex++;
         } else {
@@ -307,6 +312,7 @@ function renderProduct() {
             <div>
                 <small>${labels[current.category] || ""}</small>
                 <h2>${esc(current.name)}</h2>
+                ${storeSettings?.offer_enabled ? `<div style="background:rgba(214,179,75,0.15);color:#d6b34b;border:1px solid #d6b34b;padding:6px 12px;border-radius:6px;font-size:13px;font-weight:bold;margin:0 0 10px;display:inline-block;">🎁 مشمول في عرض: اشتري 2 واحصل على 1 هدية مجاناً!</div>` : ""}
                 <p>${esc(current.description || "")}</p>
                 <h3>اختر الحجم</h3>
                 <div class="sizes">
@@ -414,24 +420,24 @@ function showCart() {
         return;
     }
 
-    const { subtotal, freeCount, offerDiscount, finalTotal } = calcCartTotal();
+    const { totalQty, earnedFreeGifts, finalTotal } = calcCartTotal();
 
     let offerBanner = "";
     if (storeSettings?.offer_enabled) {
-        offerBanner = `
-            <div style="background:rgba(214,179,75,0.12);border:1px dashed #d6b34b;padding:12px;border-radius:10px;margin-bottom:15px;text-align:center;">
-                <div style="color:#d6b34b;font-weight:bold;font-size:15px;">🎉 ${esc(storeSettings.offer_title || "عرض خاص متوفر الآن!")}</div>
-                ${freeCount > 0 ? `
-                    <div style="margin-top:5px;color:#4ade80;font-size:13px;font-weight:600;">
-                        ✨ مبروك! مؤهل للحصول على (${freeCount}) قطعة مجاناً ضمن العرض!
-                    </div>
-                ` : `
-                    <div style="margin-top:5px;color:#aaa;font-size:12px;">
-                        أضف قطعاً أكثر للاستفادة من القطع المجانية تلقائياً!
-                    </div>
-                `}
-            </div>
-        `;
+        if (earnedFreeGifts > 0) {
+            offerBanner = `
+                <div style="background:rgba(34,197,94,0.12);border:1px solid #22c55e;padding:12px;border-radius:10px;margin-bottom:15px;text-align:center;">
+                    <div style="color:#4ade80;font-weight:bold;font-size:15px;">🎉 مبروك! لك (${earnedFreeGifts}) عطر هدية مجاناً مع طلبك! 🎁</div>
+                    <small style="color:#bbb;font-size:12px;">المطلوب منك فقط ثمن قطعتين وسنضيف الهدية مع الأوردر.</small>
+                </div>
+            `;
+        } else if (totalQty === 1) {
+            offerBanner = `
+                <div style="background:rgba(214,179,75,0.12);border:1px dashed #d6b34b;padding:12px;border-radius:10px;margin-bottom:15px;text-align:center;">
+                    <div style="color:#d6b34b;font-weight:bold;font-size:14px;">🔥 أضف عطر كمان للسلة وخد الثالث هدية مجاناً!</div>
+                </div>
+            `;
+        }
     }
 
     const rows = cart.map((item, index) => {
@@ -446,7 +452,7 @@ function showCart() {
                     <small>${item.size.size_ml} ml × ${item.qty}</small>
                     ${
                         item.size.discount_enabled
-                        ? `<br><small>خصم إضافي: ${money(discountAmount(item.size))}</small>`
+                        ? `<br><small style="color:#d6b34b;">خصم مطبق: ${money(discountAmount(item.size))}</small>`
                         : ""
                     }
                 </div>
@@ -460,14 +466,14 @@ function showCart() {
         <h2>🛒 سلة المشتريات</h2>
         ${offerBanner}
         ${rows}
+        ${earnedFreeGifts > 0 ? `
+            <div style="background:#171717;border-right:3px solid #d6b34b;padding:10px;margin-top:12px;border-radius:6px;display:flex;justify-content:space-between;align-items:center;">
+                <span style="color:#d6b34b;font-weight:bold;">🎁 عطر إضافي هدية (ضمن العرض):</span>
+                <b style="color:#4ade80;">مجاناً (${earnedFreeGifts} قطعة)</b>
+            </div>
+        ` : ""}
         <div style="margin-top:15px; border-top:1px solid #333; padding-top:10px;">
-            ${offerDiscount > 0 ? `
-                <div style="display:flex; justify-content:space-between; color:#4ade80; margin-bottom:8px; font-weight:600;">
-                    <span>🎁 خصم العرض الترويجي:</span>
-                    <span>-${money(offerDiscount)}</span>
-                </div>
-            ` : ""}
-            <h3 class="total" style="margin:0;">الإجمالي: ${money(finalTotal)}</h3>
+            <h3 class="total" style="margin:0;">الإجمالي المطلوب: ${money(finalTotal)}</h3>
         </div>
         <button class="gold full" onclick="checkout()">إتمام الطلب</button>
     `;
@@ -489,7 +495,7 @@ function checkout() {
             <input id="customerName" required placeholder="الاسم بالكامل">
             <input id="customerPhone" required type="tel" placeholder="رقم الموبايل">
             <textarea id="customerAddress" required placeholder="العنوان بالتفصيل"></textarea>
-            <textarea id="customerNotes" style="min-height:75px;" placeholder="ملاحظات إضافية على الطلب (اختياري)..."></textarea>
+            <textarea id="customerNotes" style="min-height:75px;" placeholder="ملاحظات إضافية على الطلب أو ترشيحك لنوع العطر الهدية..."></textarea>
             <button class="gold full" type="submit">تأكيد الطلب</button>
         </form>
     `;
@@ -515,7 +521,7 @@ function normalizeWhatsApp(number) {
    BUILD WHATSAPP MESSAGE
 ========================= */
 
-function buildWhatsAppMessage(orderId, name, phone, address, notes, total, freeCount, offerDiscount) {
+function buildWhatsAppMessage(orderId, name, phone, address, notes, total, earnedFreeGifts) {
     let message = "";
     message += "🛍️ *طلب جديد - الوسام للعطور*\n━━━━━━━━━━━━━━\n\n";
     message += `🔢 رقم الطلب: #${orderId}\n`;
@@ -523,35 +529,27 @@ function buildWhatsAppMessage(orderId, name, phone, address, notes, total, freeC
     message += `📱 الهاتف: ${phone}\n`;
     message += `📍 العنوان: ${address}\n`;
     if (notes) {
-        message += `📝 ملاحظات: ${notes}\n`;
+        message += `📝 ملاحظات العميل: ${notes}\n`;
     }
-    message += "\n🧴 *تفاصيل الطلب:*\n";
+    message += "\n🧴 *تفاصيل المنتجات المطلوبة:*\n";
 
     cart.forEach((item, index) => {
-        const original = Number(item.size.price || 0);
         const final = fp(item.size);
-        const discount = discountAmount(item.size);
         const itemTotal = final * Number(item.qty);
 
         message += `\n${index + 1}. ${item.product.name}\n`;
         message += `   📏 الحجم: ${item.size.size_ml} ml\n`;
         message += `   🔢 الكمية: ${item.qty}\n`;
-        message += `   💰 السعر: ${money(original)}\n`;
-        if (discount > 0) {
-            message += `   🏷️ الخصم: ${money(discount)}\n`;
-            message += `   💵 بعد الخصم: ${money(final)}\n`;
-        }
-        message += `   📦 الإجمالي: ${money(itemTotal)}\n`;
+        message += `   💰 الإجمالي: ${money(itemTotal)}\n`;
     });
 
-    if (freeCount > 0) {
-        message += `\n🎁 *تطبيق العرض الترويجي:*`;
-        message += `\n   ✨ عدد القطع المجانية المكتسبة: ${freeCount}`;
-        message += `\n   🏷️ قيمة خصم العرض: -${money(offerDiscount)}\n`;
+    if (earnedFreeGifts > 0) {
+        message += "\n━━━━━━━━━━━━━━\n";
+        message += `🎁 *العرض الخاص المستحق:* مبروك! مستحق (+${earnedFreeGifts} قطعة هدية مجانية) مع الأوردر!\n`;
     }
 
     message += "\n━━━━━━━━━━━━━━\n";
-    message += `💰 *الإجمالي المستحق: ${money(total)}*\n\n`;
+    message += `💰 *المطلوب دفعه: ${money(total)}*\n\n`;
     message += "شكراً لاختياركم الوسام للعطور 🌹";
     return message;
 }
@@ -571,7 +569,15 @@ async function sendOrder(event) {
     const phone = document.getElementById("customerPhone").value.trim();
     const address = document.getElementById("customerAddress").value.trim();
     const notes = document.getElementById("customerNotes")?.value.trim() || "";
-    const { finalTotal, freeCount, offerDiscount } = calcCartTotal();
+    const { finalTotal, earnedFreeGifts } = calcCartTotal();
+
+    // إرفاق نص الهدية مع الملاحظات للأدمن في لوحة التحكم
+    let combinedNotes = notes;
+    if (earnedFreeGifts > 0) {
+        combinedNotes = combinedNotes 
+            ? `[🎁 مستحق ${earnedFreeGifts} قطعة هدية ضمن العرض] - ${combinedNotes}` 
+            : `[🎁 مستحق ${earnedFreeGifts} قطعة هدية ضمن العرض]`;
+    }
 
     try {
         const orderResponse = await fetch(
@@ -587,7 +593,7 @@ async function sendOrder(event) {
                     customer_name: name,
                     phone: phone,
                     address: address,
-                    notes: notes,
+                    notes: combinedNotes,
                     total: finalTotal,
                     status: "pending"
                 })
@@ -640,7 +646,7 @@ async function sendOrder(event) {
         }
 
         const whatsapp = normalizeWhatsApp(storeSettings?.whatsapp);
-        const whatsappMessage = buildWhatsAppMessage(order.id, name, phone, address, notes, finalTotal, freeCount, offerDiscount);
+        const whatsappMessage = buildWhatsAppMessage(order.id, name, phone, address, notes, finalTotal, earnedFreeGifts);
 
         cart = [];
         save();
@@ -649,6 +655,7 @@ async function sendOrder(event) {
             <div class="empty">
                 <h2>✅ تم تسجيل طلبك بنجاح</h2>
                 <p>رقم الطلب: <strong>#${order.id}</strong></p>
+                ${earnedFreeGifts > 0 ? `<p style="color:#d6b34b;font-weight:bold;">🎁 تم احتساب قطعتك الهدية المجانية وسيتم تجهيزها مع الطلب!</p>` : ""}
                 ${
                     whatsapp
                     ? `
