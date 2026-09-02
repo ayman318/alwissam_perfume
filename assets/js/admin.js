@@ -71,52 +71,67 @@ $("sizeForm").onsubmit=async e=>{
 
 async function deleteSize(id){if(!confirm("حذف الحجم؟"))return;try{await rest(`product_sizes?id=eq.${id}`,{method:"DELETE"});message("تم حذف الحجم");loadProducts()}catch(e){message(e.message,true)}}
 
-// عرض الطلبات مع التعريب والأزرار
+// عرض الطلبات وجلب المنتجات المرتبطة بها تلقائياً
 async function loadOrders(){
   try{
-    orders=await rest("orders?select=*&order=id.desc")||[];
-    $("ordersList").innerHTML=orders.length?orders.map(o=>`
-      <article class="order-card">
-        <div class="order-top"><strong>طلب #${o.id}</strong><span>${esc(orderStatusLabels[o.status]||o.status||"قيد الانتظار ⏳")}</span></div>
-        <p>👤 ${esc(o.customer_name||"—")}</p>
-        <p>📱 ${esc(o.phone||"—")}</p>
-        <p>📍 ${esc(o.address||"—")}</p>
-        <p>💰 ${money(o.total)}</p>
-        <div style="display:flex;gap:6px;align-items:center;margin-top:10px;flex-wrap:wrap;">
-          <select style="flex:1;min-width:130px;" onchange="changeStatus(${o.id},this.value)">
-            <option value="pending" ${o.status==="pending"?"selected":""}>قيد الانتظار ⏳</option>
-            <option value="confirmed" ${o.status==="confirmed"?"selected":""}>تم التأكيد ✅</option>
-            <option value="shipped" ${o.status==="shipped"?"selected":""}>تم الشحن 🚚</option>
-            <option value="delivered" ${o.status==="delivered"?"selected":""}>تم التوصيل 🎁</option>
-            <option value="cancelled" ${o.status==="cancelled"?"selected":""}>ملغي ❌</option>
-          </select>
-          <button class="btn" onclick="printInvoice(${o.id})" style="padding:6px 10px;background:#2563eb;color:#fff;">🖨️ طباعة</button>
-          <button class="btn danger" onclick="deleteOrder(${o.id})" style="padding:6px 10px;">🗑️ حذف</button>
-        </div>
-      </article>
-    `).join(""):'<div class="empty">📦 لا توجد طلبات.</div>';
+    orders = await rest("orders?select=*,order_items(*)&order=id.desc") || [];
+    $("ordersList").innerHTML = orders.length ? orders.map(o => {
+      const currentSt = o.status || "pending";
+      const arabicSt = orderStatusLabels[currentSt] || currentSt;
+      const itemsCount = (o.order_items || []).reduce((sum, it) => sum + Number(it.quantity || 1), 0);
+
+      return `
+        <article class="order-card">
+          <div class="order-top">
+            <strong>طلب #${o.id}</strong>
+            <span style="color:#d6b34b; font-weight:bold;">${arabicSt}</span>
+          </div>
+          <p>👤 <b>العميل:</b> ${esc(o.customer_name || "—")}</p>
+          <p>📱 <b>الهاتف:</b> ${esc(o.phone || "—")}</p>
+          <p>📍 <b>العنوان:</b> ${esc(o.address || "—")}</p>
+          <p>📦 <b>عدد القطع:</b> ${itemsCount} قطعة</p>
+          <p>💰 <b>المبلغ:</b> ${money(o.total)}</p>
+          <div style="display:flex;gap:6px;align-items:center;margin-top:10px;flex-wrap:wrap;">
+            <select style="flex:1;min-width:140px;padding:6px;border-radius:6px;background:#1e1e1e;color:#fff;border:1px solid #444;" onchange="changeStatus(${o.id},this.value)">
+              <option value="pending" ${currentSt==="pending"?"selected":""}>قيد الانتظار ⏳</option>
+              <option value="confirmed" ${currentSt==="confirmed"?"selected":""}>تم التأكيد ✅</option>
+              <option value="shipped" ${currentSt==="shipped"?"selected":""}>تم الشحن 🚚</option>
+              <option value="delivered" ${currentSt==="delivered"?"selected":""}>تم التوصيل 🎁</option>
+              <option value="cancelled" ${currentSt==="cancelled"?"selected":""}>ملغي ❌</option>
+            </select>
+            <button class="btn" onclick="printInvoice(${o.id})" style="padding:6px 12px;background:#2563eb;color:#fff;cursor:pointer;">🖨️ طباعة</button>
+            <button class="btn danger" onclick="deleteOrder(${o.id})" style="padding:6px 12px;cursor:pointer;">🗑️ حذف</button>
+          </div>
+        </article>
+      `;
+    }).join("") : '<div class="empty">📦 لا توجد طلبات.</div>';
     stats();
   }catch(e){
     $("ordersList").innerHTML=`<div class="empty">❌ ${esc(e.message)}</div>`;
   }
 }
 
-// دالة طباعة فاتورة طلب مفرد
+// طباعة فاتورة مفردة بها كافة التفاصيل والقطع
 async function printInvoice(id){
-  const order = orders.find(x=>Number(x.id)===Number(id));
+  const order = orders.find(x => Number(x.id) === Number(id));
   if(!order) return alert("تعذر العثور على الطلب");
 
-  let items = [];
-  try {
-    items = await rest(`order_items?order_id=eq.${id}`) || [];
-  } catch(e) {
-    console.warn("تعذر جلب تفاصيل المنتجات:", e);
+  let items = order.order_items || [];
+  if(!items.length) {
+    try {
+      items = await rest(`order_items?order_id=eq.${id}`) || [];
+    } catch(e) {
+      console.warn(e);
+    }
   }
 
   const storeName = settingsRow?.store_name || "الوسام للعطور";
   const dateStr = order.created_at ? new Date(order.created_at).toLocaleString("ar-EG") : new Date().toLocaleString("ar-EG");
+  const arabicStatus = orderStatusLabels[order.status] || order.status || "قيد الانتظار";
 
   const printWin = window.open("", "_blank", "width=850,height=750");
+  if(!printWin) return alert("يرجى السماح بالنوافذ المنبثقة (Pop-ups) للمتصفح للطباعة");
+
   printWin.document.write(`
     <!DOCTYPE html>
     <html lang="ar" dir="rtl">
@@ -125,15 +140,15 @@ async function printInvoice(id){
       <title>فاتورة طلب #${order.id}</title>
       <style>
         body { font-family: 'Cairo', Tahoma, Arial, sans-serif; padding: 25px; color: #111; direction: rtl; }
-        .invoice-header { text-align: center; border-bottom: 2px dashed #444; padding-bottom: 15px; margin-bottom: 20px; }
-        .invoice-header h1 { margin: 0 0 5px; font-size: 24px; color: #111; }
+        .invoice-header { text-align: center; border-bottom: 2px dashed #333; padding-bottom: 12px; margin-bottom: 18px; }
+        .invoice-header h1 { margin: 0 0 5px; font-size: 24px; }
         .invoice-header p { margin: 3px 0; color: #555; }
-        .info-box { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; font-size: 14px; background: #fafafa; padding: 14px; border: 1px solid #e5e5e5; border-radius: 6px; }
+        .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; font-size: 14px; background: #fdfdfd; padding: 14px; border: 1px solid #e2e2e2; border-radius: 6px; }
         table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 14px; }
-        th, td { border: 1px solid #ddd; padding: 10px; text-align: center; }
-        th { background: #f3f3f3; }
-        .total-box { text-align: left; font-size: 17px; font-weight: bold; margin-top: 15px; padding-left: 10px; }
-        .footer { text-align: center; margin-top: 40px; font-size: 13px; color: #777; border-top: 1px solid #eee; padding-top: 15px; }
+        th, td { border: 1px solid #ccc; padding: 10px; text-align: center; }
+        th { background: #f4f4f4; font-weight: bold; }
+        .total-box { text-align: left; font-size: 18px; font-weight: bold; margin-top: 15px; }
+        .footer { text-align: center; margin-top: 40px; font-size: 13px; color: #777; border-top: 1px solid #ddd; padding-top: 15px; }
         @media print { body { padding: 0; } }
       </style>
     </head>
@@ -143,20 +158,20 @@ async function printInvoice(id){
         <p>فاتورة شراء رقم: #${order.id}</p>
         <small>${dateStr}</small>
       </div>
-      <div class="info-box">
-        <div><strong>العميل:</strong> ${esc(order.customer_name || "—")}</div>
-        <div><strong>الهاتف:</strong> ${esc(order.phone || "—")}</div>
-        <div style="grid-column: 1 / -1;"><strong>العنوان:</strong> ${esc(order.address || "—")}</div>
-        <div><strong>حالة الطلب:</strong> ${esc(orderStatusLabels[order.status] || order.status || "قيد الانتظار")}</div>
+      <div class="info-grid">
+        <div><b>اسم العميل:</b> ${esc(order.customer_name || "—")}</div>
+        <div><b>رقم الهاتف:</b> ${esc(order.phone || "—")}</div>
+        <div style="grid-column: 1 / -1;"><b>عنوان التوصيل:</b> ${esc(order.address || "—")}</div>
+        <div><b>حالة الطلب:</b> ${esc(arabicStatus)}</div>
       </div>
       <table>
         <thead>
           <tr>
             <th>#</th>
-            <th>المنتج</th>
+            <th>اسم العطر / المنتج</th>
             <th>الحجم</th>
-            <th>الكمية</th>
-            <th>السعر</th>
+            <th>الكمية (القطع)</th>
+            <th>سعر القطعة</th>
             <th>الإجمالي</th>
           </tr>
         </thead>
@@ -164,15 +179,15 @@ async function printInvoice(id){
           ${items.length ? items.map((it, idx) => `
             <tr>
               <td>${idx + 1}</td>
-              <td>${esc(it.product_name || "منتج")}</td>
+              <td style="font-weight:bold;">${esc(it.product_name || "عطر")}</td>
               <td>${it.size_ml ? it.size_ml + ' ml' : '—'}</td>
-              <td>${it.quantity}</td>
+              <td><b>${it.quantity}</b></td>
               <td>${money(it.final_price || it.original_price)}</td>
               <td>${money((it.final_price || it.original_price) * it.quantity)}</td>
             </tr>
           `).join("") : `
             <tr>
-              <td colspan="6" style="padding:15px; color:#666;">تفاصيل الطلب: إجمالي فقط (${money(order.total)})</td>
+              <td colspan="6" style="padding:15px; color:#888;">لم يتم تسجيل عناصر تفصيلية لهذا الطلب القديم. الإجمالي: ${money(order.total)}</td>
             </tr>
           `}
         </tbody>
@@ -192,15 +207,17 @@ async function printInvoice(id){
   printWin.document.close();
 }
 
-// دالة طباعة جميع الطلبات
+// دالة طباعة كل الطلبات
 function printAllOrders(){
-  if(!orders.length) return alert("لا توجد طلبات لطباعتها");
+  if(!orders.length) return alert("لا توجد طلبات حالياً لطباعتها");
 
   const storeName = settingsRow?.store_name || "الوسام للعطور";
   const dateStr = new Date().toLocaleString("ar-EG");
   const totalSales = orders.reduce((sum, o) => sum + Number(o.total || 0), 0);
 
-  const printWin = window.open("", "_blank", "width=900,height=750");
+  const printWin = window.open("", "_blank", "width=950,height=750");
+  if(!printWin) return alert("يرجى السماح بالنوافذ المنبثقة (Pop-ups) للمتصفح للطباعة");
+
   printWin.document.write(`
     <!DOCTYPE html>
     <html lang="ar" dir="rtl">
@@ -209,19 +226,19 @@ function printAllOrders(){
       <title>كشف كلي بجميع الطلبات</title>
       <style>
         body { font-family: 'Cairo', Tahoma, Arial, sans-serif; padding: 25px; color: #111; direction: rtl; }
-        .header { text-align: center; border-bottom: 2px solid #222; padding-bottom: 15px; margin-bottom: 20px; }
+        .header { text-align: center; border-bottom: 2px solid #222; padding-bottom: 12px; margin-bottom: 20px; }
         .header h1 { margin: 0 0 5px; font-size: 24px; }
-        table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 13px; }
-        th, td { border: 1px solid #bbb; padding: 8px; text-align: center; }
+        table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        th, td { border: 1px solid #999; padding: 8px; text-align: center; }
         th { background-color: #eee; }
-        .total-summary { margin-top: 20px; text-align: left; font-size: 16px; font-weight: bold; }
+        .total-summary { margin-top: 25px; text-align: left; font-size: 17px; font-weight: bold; }
         @media print { body { padding: 0; } }
       </style>
     </head>
     <body>
       <div class="header">
         <h1>${esc(storeName)}</h1>
-        <p>كشف تقرير بجميع الطلبات (${orders.length} طلب)</p>
+        <p>تقرير مجمع بجميع الطلبات (${orders.length} طلب)</p>
         <small>${dateStr}</small>
       </div>
       <table>
@@ -231,25 +248,30 @@ function printAllOrders(){
             <th>العميل</th>
             <th>الهاتف</th>
             <th>العنوان</th>
+            <th>المنتجات المطلوبة</th>
             <th>الحالة</th>
-            <th>المبلغ</th>
+            <th>الإجمالي</th>
           </tr>
         </thead>
         <tbody>
-          ${orders.map(o => `
-            <tr>
-              <td>#${o.id}</td>
-              <td>${esc(o.customer_name || "—")}</td>
-              <td>${esc(o.phone || "—")}</td>
-              <td>${esc(o.address || "—")}</td>
-              <td>${esc(orderStatusLabels[o.status] || o.status || "قيد الانتظار")}</td>
-              <td>${money(o.total)}</td>
-            </tr>
-          `).join("")}
+          ${orders.map(o => {
+            const itemsText = (o.order_items || []).map(i => `${i.product_name} (${i.size_ml}ml × ${i.quantity})`).join("<br>") || "—";
+            return `
+              <tr>
+                <td>#${o.id}</td>
+                <td>${esc(o.customer_name || "—")}</td>
+                <td>${esc(o.phone || "—")}</td>
+                <td>${esc(o.address || "—")}</td>
+                <td style="font-size:12px; text-align:right;">${itemsText}</td>
+                <td>${esc(orderStatusLabels[o.status] || o.status || "قيد الانتظار")}</td>
+                <td>${money(o.total)}</td>
+              </tr>
+            `;
+          }).join("")}
         </tbody>
       </table>
       <div class="total-summary">
-        إجمالي المبيعات لجميع الطلبات: ${money(totalSales)}
+        إجمالي المبيعات الكلي: ${money(totalSales)}
       </div>
       <script>
         window.onload = function() { window.print(); };
@@ -263,11 +285,17 @@ function printAllOrders(){
 // دالة حذف الطلب
 async function deleteOrder(id){if(!confirm(`هل أنت متأكد من حذف الطلب #${id}؟`))return;try{await rest(`orders?id=eq.${id}`,{method:"DELETE"});message("تم حذف الطلب بنجاح");await loadOrders()}catch(e){message("لم يتم الحذف: "+e.message,true)}}
 
-async function changeStatus(id,status){try{await rest(`orders?id=eq.${id}`,{method:"PATCH",headers:{Prefer:"return=minimal"},body:JSON.stringify({status})});message("تم تحديث الحالة")}catch(e){message(e.message,true)}}
+async function changeStatus(id,status){try{await rest(`orders?id=eq.${id}`,{method:"PATCH",headers:{Prefer:"return=minimal"},body:JSON.stringify({status})});message("تم تحديث الحالة");await loadOrders();}catch(e){message(e.message,true)}}
 
 $("refreshOrders").onclick=loadOrders;
-const printAllBtn = $("printAllOrdersBtn");
-if(printAllBtn) printAllBtn.onclick = printAllOrders;
+
+// ربط زر طباعة الكل بالأمان بعد اكتمال الصفحة
+window.addEventListener("DOMContentLoaded", () => {
+  const btn = $("printAllOrdersBtn");
+  if(btn) btn.onclick = printAllOrders;
+});
+const directBtn = $("printAllOrdersBtn");
+if(directBtn) directBtn.onclick = printAllOrders;
 
 async function loadSettings(){try{let d=await rest("settings?select=*&limit=1")||[];settingsRow=d[0]||null;if(settingsRow){$("storeName").value=settingsRow.store_name||"";$("whatsapp").value=settingsRow.whatsapp||"";$("tagline").value=settingsRow.tagline||""}}catch(e){message(e.message,true)}}
 $("settingsForm").onsubmit=async e=>{e.preventDefault();try{let p={store_name:$("storeName").value.trim(),whatsapp:$("whatsapp").value.trim(),tagline:$("tagline").value.trim(),updated_at:new Date().toISOString()};if(settingsRow)await rest(`settings?id=eq.${settingsRow.id}`,{method:"PATCH",headers:{Prefer:"return=minimal"},body:JSON.stringify(p)});else await rest("settings",{method:"POST",headers:{Prefer:"return=minimal"},body:JSON.stringify(p)});message("تم حفظ الإعدادات")}catch(x){message(x.message,true)}}
