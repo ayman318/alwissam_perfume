@@ -718,3 +718,8 @@ initTheme();
 save();
 loadSettings();
 loadProducts();
+
+// فتح السلة تلقائياً إذا جاء العميل محولاً من صفحة المنتج بضغط إتمام الشراء
+if (window.location.hash === "#openCart") {
+    setTimeout(() => { openCart(); }, 400);
+}
