@@ -19,6 +19,11 @@
   </a>
 
   <div class="header-actions">
+    <!-- زر تتبع حالة الطلب للعميل -->
+    <button class="icon-action-btn" onclick="openTrackModal()" title="تتبع حالة طلبك" aria-label="تتبع الطلب">
+      <span>📍</span>
+      <span class="btn-label">تتبع طلبي</span>
+    </button>
     <!-- زر تبديل الوضع الليلي / النهاري -->
     <button id="themeToggle" class="theme-btn" title="تبديل المظهر" aria-label="تبديل المظهر">
       <span class="theme-icon">☀️</span>
@@ -30,11 +35,11 @@
 </header>
 
 <section class="hero">
-  <div>
-    <span>WISSAM PERFUMES</span>
+  <div class="hero-content">
+    <span class="hero-eyebrow">WISSAM PERFUMES</span>
     <h1>عطرك عنوان <em>أناقتك</em></h1>
     <p>اختار عطرك المفضل من مجموعتنا الاستثنائية بلمسات فاخرة تدوم طويلاً.</p>
-    <a href="#storeControls">تصفح المنتجات</a>
+    <a href="#storeControls" class="gold hero-cta">تصفح المنتجات</a>
   </div>
 </section>
 
@@ -58,7 +63,8 @@
 
 <section class="title">
   <span>OUR COLLECTION</span>
-  <h2>اختار عطرك</h2>
+  <h2>المجموعة المختارة</h2>
+  <div class="title-accent"></div>
 </section>
 
 <main id="products" class="grid"></main>
