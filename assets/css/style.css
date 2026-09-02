@@ -112,6 +112,37 @@ header{position:sticky;top:0;z-index:20;background:#0b0b0bf2;border-bottom:1px s
 .item button{background:none;border:0;color:#d66;cursor:pointer}
 .total{color:#d6b34b}
 
+/* أزرار نافذة نجاح الإضافة للسلة */
+.added-actions{
+  display:flex;
+  gap:12px;
+  margin-top:20px;
+}
+.added-actions button{
+  flex:1;
+  padding:12px;
+  border-radius:8px;
+  font-weight:700;
+  font-size:14px;
+  cursor:pointer;
+  border:none;
+  font-family:inherit;
+  transition:transform .2s ease, opacity .2s ease;
+}
+.added-actions button:hover{
+  transform:translateY(-2px);
+  opacity:.95;
+}
+.btn-continue{
+  background:#222;
+  color:#ddd;
+  border:1px solid #444 !important;
+}
+.btn-checkout{
+  background:linear-gradient(135deg,#e4c45e,#9d7515);
+  color:#080808;
+}
+
 input,textarea{display:block;width:100%;margin:8px 0;background:#181818;border:1px solid #333;color:#fff;border-radius:8px;padding:12px;font-family:inherit}
 textarea{min-height:110px}
 
