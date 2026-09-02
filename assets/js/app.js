@@ -37,6 +37,32 @@ const esc = s =>
         "'": "&#039;"
     }[m]));
 
+/* ==========================================
+   إدارة الثيم: لايت مود و نايت مود (الافتراضي Dark)
+========================================== */
+function initTheme() {
+    const savedTheme = localStorage.getItem("wissam_theme") || "dark";
+    applyTheme(savedTheme);
+
+    const toggleBtn = document.getElementById("themeToggle");
+    if (toggleBtn) {
+        toggleBtn.onclick = () => {
+            const currentTheme = document.documentElement.getAttribute("data-theme") || "dark";
+            const newTheme = currentTheme === "dark" ? "light" : "dark";
+            applyTheme(newTheme);
+        };
+    }
+}
+
+function applyTheme(theme) {
+    document.documentElement.setAttribute("data-theme", theme);
+    localStorage.setItem("wissam_theme", theme);
+    const icon = document.querySelector(".theme-icon");
+    if (icon) {
+        icon.textContent = theme === "dark" ? "☀️" : "🌙";
+    }
+}
+
 /* السعر النهائي بعد الخصم العادي للمنتج */
 function fp(size) {
     const price = Number(size?.price || 0);
@@ -259,7 +285,7 @@ function renderProducts() {
                     ${priceHTML}
                     ${
                         sizes.length
-                        ? `<small style="display:block;margin:6px 0;color:#cba33f;">${sizes.map(s => `${s.size_ml} ml`).join(" • ")}</small>`
+                        ? `<small style="display:block;margin:6px 0;color:var(--gold-main);">${sizes.map(s => `${s.size_ml} ml`).join(" • ")}</small>`
                         : ""
                     }
                     <button onclick='showProduct(${JSON.stringify(product).replace(/</g, "\\u003c")})'>
@@ -284,7 +310,7 @@ function handleSearch() {
         if (matchCategory && matchName) {
             card.style.display = "";
             card.style.animation = "none";
-            card.offsetHeight;
+            card.offsetHeight; // إعادة تفعيل الحركة
             card.style.animation = `cardEntrance .5s cubic-bezier(.16,1,.3,1) ${visibleIndex * 0.06}s backwards`;
             visibleIndex++;
         } else {
@@ -322,8 +348,8 @@ function renderProduct() {
             <div>
                 <small>${labels[current.category] || ""}</small>
                 <h2>${esc(current.name)}</h2>
-                ${storeSettings?.offer_enabled ? `<div style="background:rgba(214,179,75,0.15);color:#d6b34b;border:1px solid #d6b34b;padding:6px 12px;border-radius:6px;font-size:13px;font-weight:bold;margin:0 0 10px;display:inline-block;">🎁 مشمول في عرض: اشتري 2 واحصل على 1 هدية مجاناً!</div>` : ""}
-                <p>${esc(current.description || "")}</p>
+                ${storeSettings?.offer_enabled ? `<div style="background:rgba(214,179,75,0.15);color:var(--gold-main);border:1px solid var(--gold-main);padding:6px 12px;border-radius:6px;font-size:13px;font-weight:bold;margin:0 0 10px;display:inline-block;">🎁 مشمول في عرض: اشتري 2 واحصل على 1 هدية مجاناً!</div>` : ""}
+                <p style="color:var(--text-muted);">${esc(current.description || "")}</p>
                 <h3>اختر الحجم</h3>
                 <div class="sizes">
                     ${
@@ -410,8 +436,8 @@ function showAddedConfirmation() {
     modalContent.innerHTML = `
         <div style="text-align:center; padding: 25px 15px;">
             <div style="font-size:45px; margin-bottom:10px;">🎉</div>
-            <h2 style="color:#d6b34b; margin:0 0 8px;">تمت إضافة العطر إلى السلة!</h2>
-            <p style="color:#bbb; font-size:15px; margin:0 0 15px;">
+            <h2 style="color:var(--gold-main); margin:0 0 8px;">تمت إضافة العطر إلى السلة!</h2>
+            <p style="color:var(--text-muted); font-size:15px; margin:0 0 15px;">
                 <b>${esc(current.name)}</b> (${currentSize.size_ml} ml) × ${qty}
             </p>
 
@@ -421,8 +447,8 @@ function showAddedConfirmation() {
                 </div>
             ` : ""}
 
-            <div style="background:#181818; padding:12px; border-radius:8px; border:1px solid #333; margin-bottom:20px; font-size:14px;">
-                عدد القطع بالسلة الآن: <b>${totalQty}</b> | الإجمالي: <b style="color:#d6b34b;">${money(finalTotal)}</b>
+            <div style="background:var(--bg-surface-elevated); padding:12px; border-radius:8px; border:1px solid var(--border-color); margin-bottom:20px; font-size:14px;">
+                عدد القطع بالسلة الآن: <b>${totalQty}</b> | الإجمالي: <b style="color:var(--gold-main);">${money(finalTotal)}</b>
             </div>
 
             <div class="added-actions">
@@ -476,13 +502,13 @@ function showCart() {
             offerBanner = `
                 <div style="background:rgba(34,197,94,0.12);border:1px solid #22c55e;padding:12px;border-radius:10px;margin-bottom:15px;text-align:center;">
                     <div style="color:#4ade80;font-weight:bold;font-size:15px;">🎉 مبروك! لك (${earnedFreeGifts}) عطر هدية مجاناً مع طلبك! 🎁</div>
-                    <small style="color:#bbb;font-size:12px;">المطلوب منك فقط ثمن قطعتين وسنضيف الهدية مع الأوردر.</small>
+                    <small style="color:var(--text-muted);font-size:12px;">المطلوب منك فقط ثمن قطعتين وسنضيف الهدية مع الأوردر.</small>
                 </div>
             `;
         } else if (totalQty === 1) {
             offerBanner = `
-                <div style="background:rgba(214,179,75,0.12);border:1px dashed #d6b34b;padding:12px;border-radius:10px;margin-bottom:15px;text-align:center;">
-                    <div style="color:#d6b34b;font-weight:bold;font-size:14px;">🔥 أضف عطر كمان للسلة وخد الثالث هدية مجاناً!</div>
+                <div style="background:rgba(214,179,75,0.12);border:1px dashed var(--gold-main);padding:12px;border-radius:10px;margin-bottom:15px;text-align:center;">
+                    <div style="color:var(--gold-main);font-weight:bold;font-size:14px;">🔥 أضف عطر كمان للسلة وخد الثالث هدية مجاناً!</div>
                 </div>
             `;
         }
@@ -500,7 +526,7 @@ function showCart() {
                     <small>${item.size.size_ml} ml × ${item.qty}</small>
                     ${
                         item.size.discount_enabled
-                        ? `<br><small style="color:#d6b34b;">خصم مطبق: ${money(discountAmount(item.size))}</small>`
+                        ? `<br><small style="color:var(--gold-main);">خصم مطبق: ${money(discountAmount(item.size))}</small>`
                         : ""
                     }
                 </div>
@@ -515,12 +541,12 @@ function showCart() {
         ${offerBanner}
         ${rows}
         ${earnedFreeGifts > 0 ? `
-            <div style="background:#171717;border-right:3px solid #d6b34b;padding:10px;margin-top:12px;border-radius:6px;display:flex;justify-content:space-between;align-items:center;">
-                <span style="color:#d6b34b;font-weight:bold;">🎁 عطر إضافي هدية (ضمن العرض):</span>
+            <div style="background:var(--bg-surface-elevated);border-right:3px solid var(--gold-main);padding:10px;margin-top:12px;border-radius:6px;display:flex;justify-content:space-between;align-items:center;">
+                <span style="color:var(--gold-main);font-weight:bold;">🎁 عطر إضافي هدية (ضمن العرض):</span>
                 <b style="color:#4ade80;">مجاناً (${earnedFreeGifts} قطعة)</b>
             </div>
         ` : ""}
-        <div style="margin-top:15px; border-top:1px solid #333; padding-top:10px;">
+        <div style="margin-top:15px; border-top:1px solid var(--border-color); padding-top:10px;">
             <h3 class="total" style="margin:0;">الإجمالي المطلوب: ${money(finalTotal)}</h3>
         </div>
         <button class="gold full" onclick="checkout()">إتمام الطلب</button>
@@ -703,7 +729,7 @@ async function sendOrder(event) {
             <div class="empty">
                 <h2>✅ تم تسجيل طلبك بنجاح</h2>
                 <p>رقم الطلب: <strong>#${order.id}</strong></p>
-                ${earnedFreeGifts > 0 ? `<p style="color:#d6b34b;font-weight:bold;">🎁 تم احتساب قطعتك الهدية المجانية وسيتم تجهيزها مع الطلب!</p>` : ""}
+                ${earnedFreeGifts > 0 ? `<p style="color:var(--gold-main);font-weight:bold;">🎁 تم احتساب قطعتك الهدية المجانية وسيتم تجهيزها مع الطلب!</p>` : ""}
                 ${
                     whatsapp
                     ? `
@@ -751,12 +777,12 @@ function closeModal() {
 }
 
 /* =========================
-   CATEGORIES (مع ربط البحث المباشر)
+   CATEGORIES (يدعم الشريطين القديم والجديد)
 ========================= */
 
-document.querySelectorAll(".cats button").forEach(button => {
+document.querySelectorAll(".cats-bar button, .cats button").forEach(button => {
     button.onclick = () => {
-        document.querySelectorAll(".cats button").forEach(item => item.classList.remove("active"));
+        document.querySelectorAll(".cats-bar button, .cats button").forEach(item => item.classList.remove("active"));
         button.classList.add("active");
         currentCategory = button.dataset.cat;
         handleSearch();
@@ -767,6 +793,7 @@ document.querySelectorAll(".cats button").forEach(button => {
    START
 ========================= */
 
+initTheme();
 save();
 loadSettings();
 loadProducts();
