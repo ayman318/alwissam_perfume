@@ -8,10 +8,23 @@
 <div class="splash"><img src="assets/images/logo.jpg" alt="الوسام للعطور"></div>
 <header><a class="brand" href="#"><img src="assets/images/logo.jpg" alt=""><span><b class="store-name">الوسام للعطور</b><small class="tagline">أناقة تدوم... وعطر يميزك</small></span></a><button class="cart-btn" onclick="openCart()">🛒 السلة <i id="cartCount">0</i></button></header>
 <section class="hero"><div><span>WISSAM PERFUMES</span><h1>عطرك عنوان <em>أناقتك</em></h1><p>اختار عطرك المفضل من مجموعتنا.</p><a href="#products">تصفح المنتجات</a></div></section>
+
+<!-- شريط البحث السريع -->
+<div class="search-container">
+  <input type="text" id="searchInput" placeholder="🔍 ابحث عن اسم العطر..." oninput="handleSearch()">
+</div>
+
 <nav class="cats"><button class="active" data-cat="all">الكل</button><button data-cat="men">رجال</button><button data-cat="women">نساء</button><button data-cat="unisex">للجنسين</button><button data-cat="original">أورجينال</button></nav>
 <section class="title"><span>OUR COLLECTION</span><h2>اختار عطرك</h2></section>
 <main id="products" class="grid"></main>
 <div id="modal" class="modal"><div class="box"><button class="x" onclick="closeModal()">×</button><div id="modalContent"></div></div></div>
+
+<!-- زر واتساب العائم -->
+<a id="floatingWhatsapp" class="floating-whatsapp" href="#" target="_blank" rel="noopener noreferrer" title="تحدث معنا على واتساب">
+  <span>تواصل معنا</span>
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.711 2.598 2.669-.699c.969.53 1.771.82 2.79.82 3.181 0 5.767-2.586 5.768-5.766 0-3.18-2.586-5.766-5.767-5.766zm6.815 5.766c0 3.757-3.058 6.816-6.816 6.816-1.161 0-2.28-.291-3.262-.843l-3.633.952.969-3.541c-.608-1.025-.929-2.203-.929-3.384 0-3.757 3.058-6.816 6.816-6.816 3.757 0 6.815 3.059 6.815 6.816zm-5.467 1.728c-.187-.094-1.107-.546-1.279-.608-.172-.063-.297-.094-.422.094-.125.187-.484.608-.593.733-.109.125-.219.14-.406.047-.187-.094-.791-.291-1.507-.929-.557-.497-.933-1.112-1.042-1.299-.109-.187-.012-.288.082-.381.084-.084.187-.219.281-.328.094-.109.125-.187.187-.312.062-.125.031-.234-.016-.328-.047-.094-.422-1.016-.578-1.39-.152-.365-.306-.315-.422-.321l-.359-.006c-.125 0-.328.047-.5.234-.172.187-.656.641-.656 1.562 0 .922.672 1.812.766 1.937.094.125 1.323 2.02 3.205 2.833.448.194.798.31 1.072.397.451.143.861.123 1.185.075.362-.054 1.107-.453 1.263-.89.156-.437.156-.812.109-.89-.046-.078-.171-.125-.358-.219z"/></svg>
+</a>
+
 <footer>
   © 2026 <span class="store-name">الوسام للعطور</span> — جميع الحقوق محفوظة | برمجة وتطوير <a href="https://wa.me/201280815067" target="_blank" rel="noopener noreferrer" style="color:#d6b34b; text-decoration:none; font-weight:700; border-bottom:1px dashed #d6b34b; padding-bottom:2px; transition:all 0.3s ease;">✦ Ayman Abdelsanad ✦</a>
 </footer>

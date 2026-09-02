@@ -16,10 +16,48 @@
   </div>
   <div id="ordersList" class="orders-list"></div>
 </section>
-<section id="section-settings" class="page-section"><div class="panel narrow"><h3>إعدادات المتجر</h3><form id="settingsForm" class="form-grid"><label>اسم المتجر<input id="storeName" required></label><label>WhatsApp<input id="whatsapp"></label><label class="full-field">الوصف المختصر<textarea id="tagline" rows="3"></textarea></label><button class="btn primary full-field">حفظ الإعدادات</button></form></div></section>
+<section id="section-settings" class="page-section">
+  <div class="panel narrow">
+    <h3>إعدادات المتجر</h3>
+    <form id="settingsForm" class="form-grid">
+      <label>اسم المتجر<input id="storeName" required></label>
+      <label>WhatsApp<input id="whatsapp"></label>
+      <label class="full-field">الوصف المختصر<textarea id="tagline" rows="3"></textarea></label>
+
+      <div style="grid-column: 1 / -1; border-top: 1px solid #333; margin: 15px 0 10px; padding-top: 15px;">
+        <h4 style="color:#d6b34b; margin: 0 0 12px;">🎁 نظام العروض الترويجية</h4>
+        <label class="switch-row" style="margin-bottom: 12px; display:flex; gap:8px; align-items:center;">
+          <input id="offerEnabled" type="checkbox"> <b>تفعيل عرض (اشترِ X واحصل على Y هدية)</b>
+        </label>
+        <div class="form-grid">
+          <label class="full-field">عنوان العرض
+            <input id="offerTitle" placeholder="مثال: عرض خاص: اشترِ 2 واحصل على الثالثة هدية 🎁">
+          </label>
+          <label>اشترِ عدد (قطع)
+            <input id="offerBuyQty" type="number" min="1" value="2">
+          </label>
+          <label>واحصل على (هدية مجانية)
+            <input id="offerFreeQty" type="number" min="1" value="1">
+          </label>
+        </div>
+      </div>
+
+      <button class="btn primary full-field">حفظ الإعدادات</button>
+    </form>
+  </div>
+</section>
 </main></div>
 <div id="productModal" class="modal"><div class="modal-card"><button class="modal-close" data-close="productModal">×</button><h3 id="productModalTitle">إضافة منتج</h3><form id="productForm"><input id="editProductId" type="hidden"><div class="form-grid"><label>اسم المنتج<input id="productName" required></label><label>القسم<select id="productCategory" required><option value="">اختر</option><option value="men">رجال</option><option value="women">نساء</option><option value="unisex">للجنسين</option><option value="original">أورجينال</option></select></label><label class="full-field">الوصف<textarea id="productDescription" rows="4"></textarea></label><label class="full-field">الصورة<input id="productImageFile" type="file" accept="image/*"><small class="hint">سيتم رفعها إلى Supabase Storage.</small><img id="imagePreview" class="image-preview hidden" alt=""></label><label class="switch-row"><input id="productActive" type="checkbox" checked> المنتج ظاهر في المتجر</label></div><button class="btn primary full" type="submit">حفظ المنتج</button></form></div></div>
-<div id="sizeModal" class="modal"><div class="modal-card"><button class="modal-close" data-close="sizeModal">×</button><h3>إضافة حجم وسعر وخصم</h3><form id="sizeForm" class="form-grid"><label>الحجم<select id="sizeMl"><option value="30">30 ml</option><option value="50">50 ml</option><option value="100">100 ml</option></select></label><label>السعر<input id="sizePrice" type="number" min="0" step=".01" required></label><label class="switch-row full-field"><input id="sizeDiscountEnabled" type="checkbox"> تفعيل الخصم</label><div id="discountFields" class="form-grid full-field hidden">
+<div id="sizeModal" class="modal"><div class="modal-card"><button class="modal-close" data-close="sizeModal">×</button><h3>إضافة حجم وسعر وخصم</h3><form id="sizeForm" class="form-grid">
+<label>الحجم
+  <select id="sizeMl">
+    <option value="30">30 ml</option>
+    <option value="50">50 ml</option>
+    <option value="80">80 ml</option>
+    <option value="100">100 ml</option>
+  </select>
+</label>
+<label>السعر<input id="sizePrice" type="number" min="0" step=".01" required></label><label class="switch-row full-field"><input id="sizeDiscountEnabled" type="checkbox"> تفعيل الخصم</label><div id="discountFields" class="form-grid full-field hidden">
 <label>نسبة الخصم
   <select id="discountValue">
     <option value="5">5%</option>
