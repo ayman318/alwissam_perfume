@@ -76,12 +76,12 @@ header{
 
 .header-actions{display:flex;align-items:center;gap:8px}
 
-/* زر تتبع الطلب */
+/* زر تتبع الطلب بالاسم الصريح */
 .icon-action-btn{
   background:var(--bg-surface-elevated);
   color:var(--text-main);
   border:1px solid var(--border-color);
-  border-radius:22px;
+  border-radius:18px;
   padding:8px 14px;
   display:inline-flex;
   align-items:center;
@@ -90,6 +90,7 @@ header{
   font-family:inherit;
   font-size:13px;
   font-weight:700;
+  text-decoration:none;
   transition:all .25s ease;
 }
 .icon-action-btn:hover{border-color:var(--gold-main);color:var(--gold-main);transform:translateY(-1px)}
@@ -278,20 +279,28 @@ header{
 .card strong{color:var(--gold-main);font-size:16px}
 .price-box del{color:var(--text-dim);font-size:13px;margin-left:6px}
 
-.card button{
-  width:100%;
-  margin-top:auto;
-  background:var(--bg-surface-elevated);
-  border:1px solid var(--border-gold);
-  color:var(--gold-main);
-  padding:10px;
-  border-radius:10px;
-  cursor:pointer;
-  font-weight:700;
-  font-family:inherit;
-  transition:all .25s ease;
+/* زر الرابط المباشر لصفحة المنتج المستقلة */
+.card-btn-link {
+  display: block;
+  width: 100%;
+  text-align: center;
+  margin-top: auto;
+  background: var(--bg-surface-elevated);
+  border: 1px solid var(--border-gold);
+  color: var(--gold-main);
+  padding: 10px;
+  border-radius: 10px;
+  text-decoration: none;
+  font-weight: 700;
+  font-size: 14px;
+  font-family: inherit;
+  transition: all .25s ease;
 }
-.card button:hover{background:var(--gold-main);color:#111}
+.card-btn-link:hover {
+  background: var(--gold-main);
+  color: #111;
+  transform: translateY(-2px);
+}
 
 .badges-container{
   position:absolute;
@@ -340,30 +349,6 @@ header{
   box-shadow:0 20px 40px rgba(0,0,0,.7);
 }
 .x{position:absolute;left:14px;top:8px;background:none;border:0;color:var(--text-muted);font-size:30px;cursor:pointer}
-.detail{display:grid;grid-template-columns:1fr 1fr;gap:22px}
-.detail>img{width:100%;max-height:400px;object-fit:cover;border-radius:12px;border:1px solid var(--border-color)}
-.sizes{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}
-.sizes button{
-  background:var(--bg-surface-elevated);
-  color:var(--text-main);
-  border:1px solid var(--border-color);
-  border-radius:8px;
-  padding:8px 14px;
-  cursor:pointer;
-  font-family:inherit;
-}
-.sizes button.sel{border-color:var(--gold-main);color:var(--gold-main);box-shadow:0 0 8px rgba(214,179,75,.2)}
-.qty{display:flex;gap:12px;align-items:center;margin:14px 0}
-.qty button{
-  width:34px;
-  height:34px;
-  background:var(--bg-surface-elevated);
-  color:var(--text-main);
-  border:1px solid var(--border-color);
-  border-radius:7px;
-  cursor:pointer;
-}
-.full{width:100%;margin-top:10px}
 .item{display:flex;justify-content:space-between;gap:10px;padding:12px 0;border-bottom:1px solid var(--border-color)}
 .item button{background:none;border:0;color:#ef4444;cursor:pointer;font-weight:700}
 .total{color:var(--gold-main)}
@@ -384,25 +369,6 @@ header{
 .added-actions button:hover{transform:translateY(-2px)}
 .btn-continue{background:var(--bg-surface-elevated);color:var(--text-main);border:1px solid var(--border-color) !important}
 .btn-checkout{background:var(--gold-gradient);color:#080808}
-
-/* زر مشاركة الرابط */
-.share-btn{
-  background:transparent;
-  border:1px dashed var(--gold-main);
-  color:var(--gold-main);
-  padding:8px 14px;
-  border-radius:8px;
-  cursor:pointer;
-  font-family:inherit;
-  font-size:13px;
-  font-weight:700;
-  display:inline-flex;
-  align-items:center;
-  gap:6px;
-  margin-bottom:12px;
-  transition:all .2s ease;
-}
-.share-btn:hover{background:rgba(214,179,75,.1)}
 
 input,textarea{
   display:block;
@@ -474,10 +440,8 @@ footer a:hover{text-decoration:underline}
   .grid{grid-template-columns:repeat(2,1fr);gap:12px;padding:10px 10px 60px}
   .card>img{height:180px}
   .card>div{padding:10px}
-  .detail{grid-template-columns:1fr}
-  .detail>img{max-height:280px}
-  .btn-label, .cart-text{display:none}
-  .icon-action-btn{padding:8px 10px;border-radius:50%}
+  .cart-text{display:none}
+  .icon-action-btn{padding:6px 10px;font-size:11px}
   .floating-whatsapp span{display:none}
   .floating-whatsapp{padding:12px;border-radius:50%;bottom:18px;left:18px}
 }
