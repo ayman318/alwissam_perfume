@@ -1,23 +1,74 @@
 <!doctype html>
-<html lang="ar" dir="rtl">
+<html lang="ar" dir="rtl" data-theme="dark">
 <head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>الوسام للعطور</title><link rel="stylesheet" href="assets/css/style.css">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>الوسام للعطور</title>
+<link rel="stylesheet" href="assets/css/style.css">
 </head>
 <body>
 <div class="splash"><img src="assets/images/logo.jpg" alt="الوسام للعطور"></div>
-<header><a class="brand" href="#"><img src="assets/images/logo.jpg" alt=""><span><b class="store-name">الوسام للعطور</b><small class="tagline">أناقة تدوم... وعطر يميزك</small></span></a><button class="cart-btn" onclick="openCart()">🛒 السلة <i id="cartCount">0</i></button></header>
-<section class="hero"><div><span>WISSAM PERFUMES</span><h1>عطرك عنوان <em>أناقتك</em></h1><p>اختار عطرك المفضل من مجموعتنا.</p><a href="#products">تصفح المنتجات</a></div></section>
 
-<!-- شريط البحث السريع -->
-<div class="search-container">
-  <input type="text" id="searchInput" placeholder="🔍 ابحث عن اسم العطر..." oninput="handleSearch()">
+<header>
+  <a class="brand" href="#">
+    <img src="assets/images/logo.jpg" alt="الوسام">
+    <span>
+      <b class="store-name">الوسام للعطور</b>
+      <small class="tagline">أناقة تدوم... وعطر يميزك</small>
+    </span>
+  </a>
+
+  <div class="header-actions">
+    <!-- زر تبديل الوضع الليلي / النهاري -->
+    <button id="themeToggle" class="theme-btn" title="تبديل المظهر" aria-label="تبديل المظهر">
+      <span class="theme-icon">☀️</span>
+    </button>
+    <button class="cart-btn" onclick="openCart()">
+      🛒 <span class="cart-text">السلة</span> <i id="cartCount">0</i>
+    </button>
+  </div>
+</header>
+
+<section class="hero">
+  <div>
+    <span>WISSAM PERFUMES</span>
+    <h1>عطرك عنوان <em>أناقتك</em></h1>
+    <p>اختار عطرك المفضل من مجموعتنا الاستثنائية بلمسات فاخرة تدوم طويلاً.</p>
+    <a href="#storeControls">تصفح المنتجات</a>
+  </div>
+</section>
+
+<!-- شريط التحكم الموحد: البحث + التصنيفات -->
+<div id="storeControls" class="store-controls-wrapper">
+  <div class="store-controls">
+    <div class="search-box">
+      <span class="search-icon">🔍</span>
+      <input type="text" id="searchInput" placeholder="ابحث باسم العطر أو الرائحة..." oninput="handleSearch()">
+    </div>
+    
+    <nav class="cats-bar">
+      <button class="active" data-cat="all">✨ الكل</button>
+      <button data-cat="men">👔 رجالي</button>
+      <button data-cat="women">👗 نسائي</button>
+      <button data-cat="unisex">⚖️ للجنسين</button>
+      <button data-cat="original">👑 أورجينال</button>
+    </nav>
+  </div>
 </div>
 
-<nav class="cats"><button class="active" data-cat="all">الكل</button><button data-cat="men">رجال</button><button data-cat="women">نساء</button><button data-cat="unisex">للجنسين</button><button data-cat="original">أورجينال</button></nav>
-<section class="title"><span>OUR COLLECTION</span><h2>اختار عطرك</h2></section>
+<section class="title">
+  <span>OUR COLLECTION</span>
+  <h2>اختار عطرك</h2>
+</section>
+
 <main id="products" class="grid"></main>
-<div id="modal" class="modal"><div class="box"><button class="x" onclick="closeModal()">×</button><div id="modalContent"></div></div></div>
+
+<div id="modal" class="modal">
+  <div class="box">
+    <button class="x" onclick="closeModal()">×</button>
+    <div id="modalContent"></div>
+  </div>
+</div>
 
 <!-- زر واتساب العائم -->
 <a id="floatingWhatsapp" class="floating-whatsapp" href="#" target="_blank" rel="noopener noreferrer" title="تحدث معنا على واتساب">
@@ -28,5 +79,7 @@
 <footer>
   © 2026 <span class="store-name">الوسام للعطور</span> — جميع الحقوق محفوظة | برمجة وتطوير <a href="https://wa.me/201280815067" target="_blank" rel="noopener noreferrer" style="color:#d6b34b; text-decoration:none; font-weight:700; border-bottom:1px dashed #d6b34b; padding-bottom:2px; transition:all 0.3s ease;">✦ Ayman Abdelsanad ✦</a>
 </footer>
+
 <script src="assets/js/app.js"></script>
-</body></html>
+</body>
+</html>
