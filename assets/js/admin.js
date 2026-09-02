@@ -33,45 +33,60 @@ $("productForm").onsubmit=async e=>{e.preventDefault();try{let id=$("editProduct
 async function deleteProduct(id){if(!confirm("حذف المنتج؟"))return;try{await rest(`products?id=eq.${id}`,{method:"DELETE"});message("تم حذف المنتج");loadProducts()}catch(e){message("لم يتم الحذف: "+e.message,true)}}
 
 function openSize(id){
-    sizeProductId=id;
+    sizeProductId = id;
     $("sizeModal").classList.add("show");
     $("sizeForm").reset();
-    $("sizeDiscountEnabled").checked=false;
+    $("sizeDiscountEnabled").checked = false;
     if($("discountValue")) $("discountValue").value = "5";
     toggleDiscount();
 }
-function toggleDiscount(){ $("discountFields").classList.toggle("hidden",!$("sizeDiscountEnabled").checked)}
-$("sizeDiscountEnabled").onchange=toggleDiscount;
+function toggleDiscount(){
+    const on = $("sizeDiscountEnabled").checked;
+    $("discountFields").classList.toggle("hidden", !on);
+}
+$("sizeDiscountEnabled").onchange = toggleDiscount;
 
-$("sizeForm").onsubmit=async e=>{
+$("sizeForm").onsubmit = async e => {
     e.preventDefault();
-    try{
-        let size=Number($("sizeMl").value),
-            price=Number($("sizePrice").value),
-            on=$("sizeDiscountEnabled").checked,
-            value=Number($("discountValue")?.value||5);
-        if(!price&&price!==0)throw Error("اكتب السعر.");
-        await rest("product_sizes",{
-            method:"POST",
-            headers:{Prefer:"return=minimal"},
-            body:JSON.stringify({
-                product_id:sizeProductId,
-                size_ml:size,
-                price,
-                discount_enabled:on,
-                discount_type:"percent",
-                discount_value:on?value:0
+    try {
+        const size = Number($("sizeMl").value);
+        const price = parseFloat($("sizePrice").value);
+        const on = $("sizeDiscountEnabled").checked;
+        const discountVal = on ? parseFloat($("discountValue")?.value || 0) : 0;
+
+        if (isNaN(price) || price < 0) {
+            throw new Error("يرجى إدخال سعر صحيح.");
+        }
+        if (!sizeProductId) {
+            throw new Error("لم يتم تحديد المنتج.");
+        }
+
+        await rest("product_sizes", {
+            method: "POST",
+            headers: { Prefer: "return=representation" },
+            body: JSON.stringify({
+                product_id: sizeProductId,
+                size_ml: size,
+                price: price,
+                discount_enabled: on,
+                discount_type: "percent",
+                discount_value: discountVal
             })
         });
+
         $("sizeModal").classList.remove("show");
-        message("تم حفظ الحجم والسعر");
-        loadProducts();
-    }catch(x){message(x.message,true)}
-}
+        message("✅ تم حفظ الحجم والسعر بنجاح");
+        await loadProducts();
+    } catch(x) {
+        console.error("Save size error:", x);
+        message("❌ لم يتم الحفظ: " + x.message, true);
+        alert("خطأ أثناء حفظ الحجم:\n" + x.message);
+    }
+};
 
 async function deleteSize(id){if(!confirm("حذف الحجم؟"))return;try{await rest(`product_sizes?id=eq.${id}`,{method:"DELETE"});message("تم حذف الحجم");loadProducts()}catch(e){message(e.message,true)}}
 
-// عرض الطلبات وجلب المنتجات المرتبطة بها تلقائياً مع الملاحظات
+// عرض الطلبات وجلب المنتجات والملاحظات
 async function loadOrders(){
   try{
     orders = await rest("orders?select=*,order_items(*)&order=id.desc") || [];
@@ -112,7 +127,7 @@ async function loadOrders(){
   }
 }
 
-// طباعة فاتورة مفردة تشمل كافة التفاصيل والملاحظات
+// طباعة فاتورة مفردة بها كافة التفاصيل والقطع والملاحظات
 async function printInvoice(id){
   const order = orders.find(x => Number(x.id) === Number(id));
   if(!order) return alert("تعذر العثور على الطلب");
