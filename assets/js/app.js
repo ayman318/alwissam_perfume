@@ -10,6 +10,14 @@ const labels = {
     original: "أورجينال"
 };
 
+const orderStatusLabels = {
+    pending: "قيد الانتظار والمراجعة ⏳",
+    confirmed: "تم تأكيد طلبك وجاري التجهيز ✅",
+    shipped: "طلبك في الطريق مع مندوب الشحن 🚚",
+    delivered: "تم توصيل الطلب بنجاح 🎁",
+    cancelled: "تم إلغاء الطلب ❌"
+};
+
 let products = [];
 let cart = JSON.parse(localStorage.getItem("wissam_cart") || "[]");
 let current = null;
@@ -89,13 +97,12 @@ function discountAmount(size) {
     return discount;
 }
 
-/* حساب إجمالي السلة: مجموع أسعار القطع فقط واحتساب عدد الهدايا المستحقة تلقائياً */
+/* حساب إجمالي السلة واحتساب عدد الهدايا المستحقة تلقائياً */
 function calcCartTotal() {
     let subtotal = cart.reduce((sum, item) => sum + fp(item.size) * Number(item.qty), 0);
     let totalQty = cart.reduce((sum, item) => sum + Number(item.qty), 0);
     let earnedFreeGifts = 0;
 
-    // بمجرد وصول عدد أي قطع بالسلة إلى 2، يحصل على 1 هدية (وإذا 4 يحصل على 2، وهكذا)
     if (storeSettings?.offer_enabled) {
         const buyStep = Number(storeSettings.offer_buy_qty || 2);
         const freeStep = Number(storeSettings.offer_free_qty || 1);
@@ -134,7 +141,6 @@ async function loadSettings() {
         document.querySelectorAll(".store-name").forEach(el => el.textContent = storeName);
         document.querySelectorAll(".tagline").forEach(el => el.textContent = tagline);
 
-        // ربط الزر العائم برقم الواتساب
         const whatsappNumber = normalizeWhatsApp(storeSettings?.whatsapp);
         const floatingBtn = document.getElementById("floatingWhatsapp");
         if (floatingBtn && whatsappNumber) {
@@ -173,7 +179,6 @@ async function loadProducts() {
         }
         const data = await r.json();
         products = data.map(product => {
-            // ترتيب الأحجام تصاعدياً لضمان ظهور 30 ثم 50 ثم 80 ثم 100
             const sizes = (product.product_sizes || []).sort((a, b) => Number(a.size_ml) - Number(b.size_ml));
             return {
                 ...product,
@@ -181,6 +186,7 @@ async function loadProducts() {
             };
         });
         renderProducts();
+        checkDirectProductLink();
     } catch (error) {
         console.error("Products error:", error);
         box.innerHTML = `
@@ -193,8 +199,20 @@ async function loadProducts() {
     }
 }
 
+/* التحقق من الرابط المباشر للمنتج */
+function checkDirectProductLink() {
+    const hash = window.location.hash;
+    if (hash.startsWith("#product=")) {
+        const id = hash.split("=")[1];
+        const target = products.find(p => String(p.id) === String(id));
+        if (target) {
+            showProduct(target);
+        }
+    }
+}
+
 /* =========================
-   PRODUCT CARDS & LIVE SEARCH (مع الشارات)
+   PRODUCT CARDS & LIVE SEARCH
 ========================= */
 
 function renderProducts() {
@@ -220,7 +238,6 @@ function renderProducts() {
         let hasDiscount = false;
         let maxDiscountPercent = 0;
 
-        // التحقق من وجود خصم في أي حجم من أحجام العطر
         sizes.forEach(s => {
             if (s.discount_enabled && Number(s.discount_value) > 0) {
                 hasDiscount = true;
@@ -254,8 +271,6 @@ function renderProducts() {
         }
 
         const image = product.image || "assets/images/logo.jpg";
-
-        // شارات العرض والخصم
         const offerBadge = storeSettings?.offer_enabled 
             ? `<span class="badge-offer">🎁 اشتري 2 وخد 1 هدية</span>` 
             : "";
@@ -297,7 +312,6 @@ function renderProducts() {
     }).join("");
 }
 
-/* منطق البحث اللحظي مع الحفاظ على الفئة المختارة */
 function handleSearch() {
     const searchInput = document.getElementById("searchInput");
     const query = searchInput ? searchInput.value.trim().toLowerCase() : "";
@@ -310,7 +324,7 @@ function handleSearch() {
         if (matchCategory && matchName) {
             card.style.display = "";
             card.style.animation = "none";
-            card.offsetHeight; // إعادة تفعيل الحركة
+            card.offsetHeight;
             card.style.animation = `cardEntrance .5s cubic-bezier(.16,1,.3,1) ${visibleIndex * 0.06}s backwards`;
             visibleIndex++;
         } else {
@@ -327,8 +341,20 @@ function showProduct(product) {
     current = product;
     qty = 1;
     currentSize = product.sizes?.[0] || null;
+    history.replaceState(null, "", `#product=${product.id}`);
     renderProduct();
     document.getElementById("modal").classList.add("show");
+}
+
+function copyProductLink(id) {
+    const link = `${window.location.origin}${window.location.pathname}#product=${id}`;
+    navigator.clipboard.writeText(link).then(() => {
+        const btn = document.getElementById("copyLinkBtn");
+        if (btn) btn.innerHTML = "✅ تم نسخ الرابط بنجاح!";
+        setTimeout(() => {
+            if (btn) btn.innerHTML = "🔗 نسخ رابط العطر للمشاركة";
+        }, 2200);
+    });
 }
 
 function renderProduct() {
@@ -348,6 +374,11 @@ function renderProduct() {
             <div>
                 <small>${labels[current.category] || ""}</small>
                 <h2>${esc(current.name)}</h2>
+
+                <button id="copyLinkBtn" class="share-btn" onclick="copyProductLink(${current.id})">
+                    🔗 نسخ رابط العطر للمشاركة
+                </button>
+
                 ${storeSettings?.offer_enabled ? `<div style="background:rgba(214,179,75,0.15);color:var(--gold-main);border:1px solid var(--gold-main);padding:6px 12px;border-radius:6px;font-size:13px;font-weight:bold;margin:0 0 10px;display:inline-block;">🎁 مشمول في عرض: اشتري 2 واحصل على 1 هدية مجاناً!</div>` : ""}
                 <p style="color:var(--text-muted);">${esc(current.description || "")}</p>
                 <h3>اختر الحجم</h3>
@@ -424,8 +455,6 @@ function add() {
         });
     }
     save();
-
-    // إظهار خياري إكمال التسوق أو إتمام الشراء
     showAddedConfirmation();
 }
 
@@ -555,7 +584,7 @@ function showCart() {
 }
 
 /* =========================
-   CHECKOUT (مع خانة الملاحظات)
+   CHECKOUT
 ========================= */
 
 function checkout() {
@@ -645,7 +674,6 @@ async function sendOrder(event) {
     const notes = document.getElementById("customerNotes")?.value.trim() || "";
     const { finalTotal, earnedFreeGifts } = calcCartTotal();
 
-    // إرفاق نص الهدية مع الملاحظات للأدمن في لوحة التحكم
     let combinedNotes = notes;
     if (earnedFreeGifts > 0) {
         combinedNotes = combinedNotes 
@@ -728,7 +756,8 @@ async function sendOrder(event) {
         document.getElementById("modalContent").innerHTML = `
             <div class="empty">
                 <h2>✅ تم تسجيل طلبك بنجاح</h2>
-                <p>رقم الطلب: <strong>#${order.id}</strong></p>
+                <p>رقم طلبك: <strong style="color:var(--gold-main); font-size:18px;">#${order.id}</strong></p>
+                <p style="font-size:13px; color:var(--text-muted);">احتفظ برقم الطلب لتتبعه في أي وقت من زر التتبع في الأعلى.</p>
                 ${earnedFreeGifts > 0 ? `<p style="color:var(--gold-main);font-weight:bold;">🎁 تم احتساب قطعتك الهدية المجانية وسيتم تجهيزها مع الطلب!</p>` : ""}
                 ${
                     whatsapp
@@ -748,6 +777,67 @@ async function sendOrder(event) {
     } catch (error) {
         console.error("Order error:", error);
         alert("❌ فشل إرسال الطلب\n\n" + error.message);
+    }
+}
+
+/* ==========================================
+   ORDER TRACKER (تتبع حالة الطلب)
+========================================== */
+
+function openTrackModal() {
+    document.getElementById("modalContent").innerHTML = `
+        <div style="padding:10px;">
+            <h2 style="color:var(--gold-main); margin-top:0;">📍 تتبع حالة طلبك</h2>
+            <p style="color:var(--text-muted); font-size:14px;">أدخل رقم الهاتف المسجل به الطلب أو رقم الطلب مباشرة:</p>
+            <div style="display:flex; gap:8px; margin:15px 0;">
+                <input id="trackQuery" placeholder="رقم الهاتف (مثال: 01xxxxxxxxx) أو رقم الطلب" style="margin:0;">
+                <button class="gold" onclick="searchOrderStatus()" style="white-space:nowrap; border-radius:10px;">بحث</button>
+            </div>
+            <div id="trackResult"></div>
+        </div>
+    `;
+    document.getElementById("modal").classList.add("show");
+}
+
+async function searchOrderStatus() {
+    const q = document.getElementById("trackQuery")?.value.trim();
+    const resBox = document.getElementById("trackResult");
+    if (!q) {
+        resBox.innerHTML = `<p style="color:#ef4444; font-size:13px;">يرجى كتابة رقم الطلب أو رقم الهاتف.</p>`;
+        return;
+    }
+
+    resBox.innerHTML = `<p style="color:var(--text-muted); font-size:13px;">جاري البحث عن طلبك...</p>`;
+
+    try {
+        let filter = "";
+        if (!isNaN(q) && q.length < 7) {
+            filter = `id=eq.${q}`;
+        } else {
+            filter = `phone=ilike.*${q}*`;
+        }
+
+        const r = await fetch(`${API_CONFIG.url}/rest/v1/orders?${filter}&select=id,customer_name,status,total,created_at&order=id.desc&limit=3`, { headers });
+        const orders = await r.json();
+
+        if (!orders || !orders.length) {
+            resBox.innerHTML = `<p style="color:#ef4444; font-size:13px;">لم يتم العثور على أي طلبات مطابقة لهذه البيانات.</p>`;
+            return;
+        }
+
+        resBox.innerHTML = orders.map(o => `
+            <div class="track-step">
+                <div style="flex:1;">
+                    <div style="font-weight:bold; color:var(--text-main);">طلب #${o.id} - ${esc(o.customer_name)}</div>
+                    <div style="color:var(--gold-main); font-weight:700; font-size:14px; margin:4px 0;">
+                        ${orderStatusLabels[o.status] || o.status}
+                    </div>
+                    <small style="color:var(--text-dim);">${new Date(o.created_at).toLocaleDateString("ar-EG")} | ${money(o.total)}</small>
+                </div>
+            </div>
+        `).join("");
+    } catch (e) {
+        resBox.innerHTML = `<p style="color:#ef4444; font-size:13px;">خطأ في الاتصال: ${esc(e.message)}</p>`;
     }
 }
 
@@ -773,6 +863,9 @@ function closeModal() {
     const modal = document.getElementById("modal");
     if (modal) {
         modal.classList.remove("show");
+    }
+    if (window.location.hash.startsWith("#product=")) {
+        history.replaceState(null, "", window.location.pathname);
     }
 }
 
