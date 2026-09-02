@@ -71,7 +71,7 @@ $("sizeForm").onsubmit=async e=>{
 
 async function deleteSize(id){if(!confirm("حذف الحجم؟"))return;try{await rest(`product_sizes?id=eq.${id}`,{method:"DELETE"});message("تم حذف الحجم");loadProducts()}catch(e){message(e.message,true)}}
 
-// عرض الطلبات وجلب المنتجات المرتبطة بها تلقائياً
+// عرض الطلبات وجلب المنتجات المرتبطة بها تلقائياً مع الملاحظات
 async function loadOrders(){
   try{
     orders = await rest("orders?select=*,order_items(*)&order=id.desc") || [];
@@ -89,6 +89,7 @@ async function loadOrders(){
           <p>👤 <b>العميل:</b> ${esc(o.customer_name || "—")}</p>
           <p>📱 <b>الهاتف:</b> ${esc(o.phone || "—")}</p>
           <p>📍 <b>العنوان:</b> ${esc(o.address || "—")}</p>
+          ${o.notes ? `<p style="color:#e9c77d;background:#241d0f;padding:6px 10px;border-radius:6px;margin:8px 0;font-size:13px;">📝 <b>ملاحظات:</b> ${esc(o.notes)}</p>` : ""}
           <p>📦 <b>عدد القطع:</b> ${itemsCount} قطعة</p>
           <p>💰 <b>المبلغ:</b> ${money(o.total)}</p>
           <div style="display:flex;gap:6px;align-items:center;margin-top:10px;flex-wrap:wrap;">
@@ -111,7 +112,7 @@ async function loadOrders(){
   }
 }
 
-// طباعة فاتورة مفردة بها كافة التفاصيل والقطع
+// طباعة فاتورة مفردة تشمل كافة التفاصيل والملاحظات
 async function printInvoice(id){
   const order = orders.find(x => Number(x.id) === Number(id));
   if(!order) return alert("تعذر العثور على الطلب");
@@ -144,6 +145,7 @@ async function printInvoice(id){
         .invoice-header h1 { margin: 0 0 5px; font-size: 24px; }
         .invoice-header p { margin: 3px 0; color: #555; }
         .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; font-size: 14px; background: #fdfdfd; padding: 14px; border: 1px solid #e2e2e2; border-radius: 6px; }
+        .notes-box { grid-column: 1 / -1; background: #fffbe6; border: 1px dashed #d4b106; padding: 8px 12px; border-radius: 6px; color: #614700; margin-top: 5px; }
         table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 14px; }
         th, td { border: 1px solid #ccc; padding: 10px; text-align: center; }
         th { background: #f4f4f4; font-weight: bold; }
@@ -163,6 +165,7 @@ async function printInvoice(id){
         <div><b>رقم الهاتف:</b> ${esc(order.phone || "—")}</div>
         <div style="grid-column: 1 / -1;"><b>عنوان التوصيل:</b> ${esc(order.address || "—")}</div>
         <div><b>حالة الطلب:</b> ${esc(arabicStatus)}</div>
+        ${order.notes ? `<div class="notes-box"><b>ملاحظات العميل:</b> ${esc(order.notes)}</div>` : ""}
       </div>
       <table>
         <thead>
@@ -207,7 +210,7 @@ async function printInvoice(id){
   printWin.document.close();
 }
 
-// دالة طباعة كل الطلبات
+// دالة طباعة كل الطلبات مع الملاحظات
 function printAllOrders(){
   if(!orders.length) return alert("لا توجد طلبات حالياً لطباعتها");
 
@@ -249,6 +252,7 @@ function printAllOrders(){
             <th>الهاتف</th>
             <th>العنوان</th>
             <th>المنتجات المطلوبة</th>
+            <th>ملاحظات</th>
             <th>الحالة</th>
             <th>الإجمالي</th>
           </tr>
@@ -263,6 +267,7 @@ function printAllOrders(){
                 <td>${esc(o.phone || "—")}</td>
                 <td>${esc(o.address || "—")}</td>
                 <td style="font-size:12px; text-align:right;">${itemsText}</td>
+                <td style="font-size:12px; color:#555;">${esc(o.notes || "—")}</td>
                 <td>${esc(orderStatusLabels[o.status] || o.status || "قيد الانتظار")}</td>
                 <td>${money(o.total)}</td>
               </tr>
@@ -289,7 +294,6 @@ async function changeStatus(id,status){try{await rest(`orders?id=eq.${id}`,{meth
 
 $("refreshOrders").onclick=loadOrders;
 
-// ربط زر طباعة الكل بالأمان بعد اكتمال الصفحة
 window.addEventListener("DOMContentLoaded", () => {
   const btn = $("printAllOrdersBtn");
   if(btn) btn.onclick = printAllOrders;
@@ -297,8 +301,41 @@ window.addEventListener("DOMContentLoaded", () => {
 const directBtn = $("printAllOrdersBtn");
 if(directBtn) directBtn.onclick = printAllOrders;
 
-async function loadSettings(){try{let d=await rest("settings?select=*&limit=1")||[];settingsRow=d[0]||null;if(settingsRow){$("storeName").value=settingsRow.store_name||"";$("whatsapp").value=settingsRow.whatsapp||"";$("tagline").value=settingsRow.tagline||""}}catch(e){message(e.message,true)}}
-$("settingsForm").onsubmit=async e=>{e.preventDefault();try{let p={store_name:$("storeName").value.trim(),whatsapp:$("whatsapp").value.trim(),tagline:$("tagline").value.trim(),updated_at:new Date().toISOString()};if(settingsRow)await rest(`settings?id=eq.${settingsRow.id}`,{method:"PATCH",headers:{Prefer:"return=minimal"},body:JSON.stringify(p)});else await rest("settings",{method:"POST",headers:{Prefer:"return=minimal"},body:JSON.stringify(p)});message("تم حفظ الإعدادات")}catch(x){message(x.message,true)}}
+async function loadSettings(){
+  try{
+    let d=await rest("settings?select=*&limit=1")||[];
+    settingsRow=d[0]||null;
+    if(settingsRow){
+      $("storeName").value=settingsRow.store_name||"";
+      $("whatsapp").value=settingsRow.whatsapp||"";
+      $("tagline").value=settingsRow.tagline||"";
+      if($("offerEnabled")) $("offerEnabled").checked = !!settingsRow.offer_enabled;
+      if($("offerTitle")) $("offerTitle").value = settingsRow.offer_title || "عرض خاص: اشترِ 2 واحصل على الثالثة هدية 🎁";
+      if($("offerBuyQty")) $("offerBuyQty").value = settingsRow.offer_buy_qty || 2;
+      if($("offerFreeQty")) $("offerFreeQty").value = settingsRow.offer_free_qty || 1;
+    }
+  }catch(e){message(e.message,true)}
+}
+
+$("settingsForm").onsubmit=async e=>{
+  e.preventDefault();
+  try{
+    let p={
+      store_name:$("storeName").value.trim(),
+      whatsapp:$("whatsapp").value.trim(),
+      tagline:$("tagline").value.trim(),
+      offer_enabled:$("offerEnabled")?.checked || false,
+      offer_title:$("offerTitle")?.value.trim() || "",
+      offer_buy_qty:Number($("offerBuyQty")?.value || 2),
+      offer_free_qty:Number($("offerFreeQty")?.value || 1),
+      updated_at:new Date().toISOString()
+    };
+    if(settingsRow)await rest(`settings?id=eq.${settingsRow.id}`,{method:"PATCH",headers:{Prefer:"return=minimal"},body:JSON.stringify(p)});
+    else await rest("settings",{method:"POST",headers:{Prefer:"return=minimal"},body:JSON.stringify(p)});
+    message("تم حفظ الإعدادات والعروض بنجاح");
+  }catch(x){message(x.message,true)}
+};
+
 function stats(){$("statProducts").textContent=products.length;$("statOrders").textContent=orders.length;$("statSales").textContent=money(orders.reduce((a,o)=>a+Number(o.total||0),0))}
 document.querySelectorAll("[data-close]").forEach(b=>b.onclick=()=>$(b.dataset.close).classList.remove("show"));
 if(token&&uid){(async()=>{try{let a=await rest(`admins?select=id&user_id=eq.${encodeURIComponent(uid)}`);if(a.length){showApp();refresh()}else throw Error()}catch{localStorage.clear()}})()}

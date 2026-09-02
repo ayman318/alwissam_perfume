@@ -16,6 +16,7 @@ let current = null;
 let currentSize = null;
 let qty = 1;
 let storeSettings = null;
+let currentCategory = "all";
 
 const headers = {
     apikey: API_CONFIG.anonKey,
@@ -36,7 +37,7 @@ const esc = s =>
         "'": "&#039;"
     }[m]));
 
-/* السعر النهائي بعد الخصم */
+/* السعر النهائي بعد الخصم العادي للمنتج */
 function fp(size) {
     const price = Number(size?.price || 0);
     if (!size?.discount_enabled) {
@@ -49,7 +50,7 @@ function fp(size) {
     return Math.max(0, price - discount);
 }
 
-/* قيمة الخصم */
+/* قيمة الخصم للمنتج الفردي */
 function discountAmount(size) {
     const price = Number(size?.price || 0);
     if (!size?.discount_enabled) {
@@ -62,8 +63,45 @@ function discountAmount(size) {
     return discount;
 }
 
+/* حساب إجمالي السلة مع العرض الترويجي (مثال: اشترِ 2 والتالتة هدية) */
+function calcCartTotal() {
+    let subtotal = cart.reduce((sum, item) => sum + fp(item.size) * Number(item.qty), 0);
+    let totalQty = cart.reduce((sum, item) => sum + Number(item.qty), 0);
+    let freeCount = 0;
+    let offerDiscount = 0;
+
+    if (storeSettings?.offer_enabled && storeSettings?.offer_buy_qty) {
+        const buy = Number(storeSettings.offer_buy_qty);
+        const free = Number(storeSettings.offer_free_qty || 1);
+        const bundle = buy + free;
+        
+        const bundles = Math.floor(totalQty / bundle);
+        freeCount = bundles * free;
+
+        if (freeCount > 0) {
+            let unitPrices = [];
+            cart.forEach(item => {
+                const price = fp(item.size);
+                for (let i = 0; i < item.qty; i++) {
+                    unitPrices.push(price);
+                }
+            });
+            unitPrices.sort((a, b) => a - b);
+            offerDiscount = unitPrices.slice(0, freeCount).reduce((a, b) => a + b, 0);
+        }
+    }
+
+    return {
+        subtotal,
+        totalQty,
+        freeCount,
+        offerDiscount,
+        finalTotal: Math.max(0, subtotal - offerDiscount)
+    };
+}
+
 /* =========================
-   SETTINGS
+   SETTINGS & FLOATING WHATSAPP
 ========================= */
 
 async function loadSettings() {
@@ -85,6 +123,13 @@ async function loadSettings() {
 
         document.querySelectorAll(".store-name").forEach(el => el.textContent = storeName);
         document.querySelectorAll(".tagline").forEach(el => el.textContent = tagline);
+
+        // ربط الزر العائم برقم الواتساب المحفوظ
+        const whatsappNumber = normalizeWhatsApp(storeSettings?.whatsapp);
+        const floatingBtn = document.getElementById("floatingWhatsapp");
+        if (floatingBtn && whatsappNumber) {
+            floatingBtn.href = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent("مرحباً، أود الاستفسار عن عطور الوسام 🌸")}`;
+        }
     } catch (error) {
         console.error("Settings error:", error);
     }
@@ -134,7 +179,7 @@ async function loadProducts() {
 }
 
 /* =========================
-   PRODUCT CARDS (مع الحركة المتتابعة)
+   PRODUCT CARDS & LIVE SEARCH
 ========================= */
 
 function renderProducts() {
@@ -185,6 +230,7 @@ function renderProducts() {
             <article
                 class="card"
                 data-cat="${esc(product.category)}"
+                data-name="${esc(product.name).toLowerCase()}"
                 style="animation-delay: ${index * 0.08}s"
             >
                 <img
@@ -208,6 +254,28 @@ function renderProducts() {
             </article>
         `;
     }).join("");
+}
+
+/* منطق البحث اللحظي مع الحفاظ على الفئة المختارة */
+function handleSearch() {
+    const searchInput = document.getElementById("searchInput");
+    const query = searchInput ? searchInput.value.trim().toLowerCase() : "";
+    let visibleIndex = 0;
+
+    document.querySelectorAll(".card").forEach(card => {
+        const matchCategory = currentCategory === "all" || card.dataset.cat === currentCategory;
+        const matchName = card.dataset.name.includes(query);
+
+        if (matchCategory && matchName) {
+            card.style.display = "";
+            card.style.animation = "none";
+            card.offsetHeight; // إعادة تفعيل الحركة
+            card.style.animation = `cardEntrance .5s cubic-bezier(.16,1,.3,1) ${visibleIndex * 0.06}s backwards`;
+            visibleIndex++;
+        } else {
+            card.style.display = "none";
+        }
+    });
 }
 
 /* =========================
@@ -335,8 +403,6 @@ function openCart() {
 
 function showCart() {
     const modalContent = document.getElementById("modalContent");
-    let total = 0;
-
     if (!cart.length) {
         modalContent.innerHTML = `
             <div class="empty">
@@ -348,10 +414,29 @@ function showCart() {
         return;
     }
 
+    const { subtotal, freeCount, offerDiscount, finalTotal } = calcCartTotal();
+
+    let offerBanner = "";
+    if (storeSettings?.offer_enabled) {
+        offerBanner = `
+            <div style="background:rgba(214,179,75,0.12);border:1px dashed #d6b34b;padding:12px;border-radius:10px;margin-bottom:15px;text-align:center;">
+                <div style="color:#d6b34b;font-weight:bold;font-size:15px;">🎉 ${esc(storeSettings.offer_title || "عرض خاص متوفر الآن!")}</div>
+                ${freeCount > 0 ? `
+                    <div style="margin-top:5px;color:#4ade80;font-size:13px;font-weight:600;">
+                        ✨ مبروك! مؤهل للحصول على (${freeCount}) قطعة مجاناً ضمن العرض!
+                    </div>
+                ` : `
+                    <div style="margin-top:5px;color:#aaa;font-size:12px;">
+                        أضف قطعاً أكثر للاستفادة من القطع المجانية تلقائياً!
+                    </div>
+                `}
+            </div>
+        `;
+    }
+
     const rows = cart.map((item, index) => {
         const final = fp(item.size);
         const itemTotal = final * Number(item.qty);
-        total += itemTotal;
 
         return `
             <div class="item">
@@ -361,7 +446,7 @@ function showCart() {
                     <small>${item.size.size_ml} ml × ${item.qty}</small>
                     ${
                         item.size.discount_enabled
-                        ? `<br><small>خصم: ${money(discountAmount(item.size))}</small>`
+                        ? `<br><small>خصم إضافي: ${money(discountAmount(item.size))}</small>`
                         : ""
                     }
                 </div>
@@ -373,15 +458,24 @@ function showCart() {
 
     modalContent.innerHTML = `
         <h2>🛒 سلة المشتريات</h2>
+        ${offerBanner}
         ${rows}
-        <h3 class="total">الإجمالي: ${money(total)}</h3>
+        <div style="margin-top:15px; border-top:1px solid #333; padding-top:10px;">
+            ${offerDiscount > 0 ? `
+                <div style="display:flex; justify-content:space-between; color:#4ade80; margin-bottom:8px; font-weight:600;">
+                    <span>🎁 خصم العرض الترويجي:</span>
+                    <span>-${money(offerDiscount)}</span>
+                </div>
+            ` : ""}
+            <h3 class="total" style="margin:0;">الإجمالي: ${money(finalTotal)}</h3>
+        </div>
         <button class="gold full" onclick="checkout()">إتمام الطلب</button>
     `;
     document.getElementById("modal").classList.add("show");
 }
 
 /* =========================
-   CHECKOUT
+   CHECKOUT (مع خانة الملاحظات)
 ========================= */
 
 function checkout() {
@@ -392,9 +486,10 @@ function checkout() {
     document.getElementById("modalContent").innerHTML = `
         <h2>بيانات الطلب</h2>
         <form onsubmit="sendOrder(event)">
-            <input id="customerName" required placeholder="الاسم">
+            <input id="customerName" required placeholder="الاسم بالكامل">
             <input id="customerPhone" required type="tel" placeholder="رقم الموبايل">
             <textarea id="customerAddress" required placeholder="العنوان بالتفصيل"></textarea>
+            <textarea id="customerNotes" style="min-height:75px;" placeholder="ملاحظات إضافية على الطلب (اختياري)..."></textarea>
             <button class="gold full" type="submit">تأكيد الطلب</button>
         </form>
     `;
@@ -420,14 +515,17 @@ function normalizeWhatsApp(number) {
    BUILD WHATSAPP MESSAGE
 ========================= */
 
-function buildWhatsAppMessage(orderId, name, phone, address, total) {
+function buildWhatsAppMessage(orderId, name, phone, address, notes, total, freeCount, offerDiscount) {
     let message = "";
     message += "🛍️ *طلب جديد - الوسام للعطور*\n━━━━━━━━━━━━━━\n\n";
     message += `🔢 رقم الطلب: #${orderId}\n`;
     message += `👤 العميل: ${name}\n`;
     message += `📱 الهاتف: ${phone}\n`;
-    message += `📍 العنوان: ${address}\n\n`;
-    message += "🧴 *تفاصيل الطلب:*\n";
+    message += `📍 العنوان: ${address}\n`;
+    if (notes) {
+        message += `📝 ملاحظات: ${notes}\n`;
+    }
+    message += "\n🧴 *تفاصيل الطلب:*\n";
 
     cart.forEach((item, index) => {
         const original = Number(item.size.price || 0);
@@ -446,8 +544,14 @@ function buildWhatsAppMessage(orderId, name, phone, address, total) {
         message += `   📦 الإجمالي: ${money(itemTotal)}\n`;
     });
 
+    if (freeCount > 0) {
+        message += `\n🎁 *تطبيق العرض الترويجي:*`;
+        message += `\n   ✨ عدد القطع المجانية المكتسبة: ${freeCount}`;
+        message += `\n   🏷️ قيمة خصم العرض: -${money(offerDiscount)}\n`;
+    }
+
     message += "\n━━━━━━━━━━━━━━\n";
-    message += `💰 *الإجمالي النهائي: ${money(total)}*\n\n`;
+    message += `💰 *الإجمالي المستحق: ${money(total)}*\n\n`;
     message += "شكراً لاختياركم الوسام للعطور 🌹";
     return message;
 }
@@ -466,7 +570,8 @@ async function sendOrder(event) {
     const name = document.getElementById("customerName").value.trim();
     const phone = document.getElementById("customerPhone").value.trim();
     const address = document.getElementById("customerAddress").value.trim();
-    const total = cart.reduce((sum, item) => sum + fp(item.size) * Number(item.qty), 0);
+    const notes = document.getElementById("customerNotes")?.value.trim() || "";
+    const { finalTotal, freeCount, offerDiscount } = calcCartTotal();
 
     try {
         const orderResponse = await fetch(
@@ -482,7 +587,8 @@ async function sendOrder(event) {
                     customer_name: name,
                     phone: phone,
                     address: address,
-                    total: total,
+                    notes: notes,
+                    total: finalTotal,
                     status: "pending"
                 })
             }
@@ -534,14 +640,14 @@ async function sendOrder(event) {
         }
 
         const whatsapp = normalizeWhatsApp(storeSettings?.whatsapp);
-        const whatsappMessage = buildWhatsAppMessage(order.id, name, phone, address, total);
+        const whatsappMessage = buildWhatsAppMessage(order.id, name, phone, address, notes, finalTotal, freeCount, offerDiscount);
 
         cart = [];
         save();
 
         document.getElementById("modalContent").innerHTML = `
             <div class="empty">
-                <h2>✅ تم تسجيل طلبك</h2>
+                <h2>✅ تم تسجيل طلبك بنجاح</h2>
                 <p>رقم الطلب: <strong>#${order.id}</strong></p>
                 ${
                     whatsapp
@@ -590,29 +696,15 @@ function closeModal() {
 }
 
 /* =========================
-   CATEGORIES (مع إعادة تشغيل التتابع عند الفلترة)
+   CATEGORIES (مع ربط البحث المباشر)
 ========================= */
 
 document.querySelectorAll(".cats button").forEach(button => {
     button.onclick = () => {
         document.querySelectorAll(".cats button").forEach(item => item.classList.remove("active"));
-        button.add = button.classList.add("active");
-
-        const category = button.dataset.cat;
-        let visibleIndex = 0;
-
-        document.querySelectorAll(".card").forEach(card => {
-            const isMatch = category === "all" || category === card.dataset.cat;
-            if (isMatch) {
-                card.style.display = "";
-                card.style.animation = "none";
-                card.offsetHeight; // إعادة تفعيل التدفق الحركي
-                card.style.animation = `cardEntrance .6s cubic-bezier(.16,1,.3,1) ${visibleIndex * 0.08}s backwards`;
-                visibleIndex++;
-            } else {
-                card.style.display = "none";
-            }
-        });
+        button.classList.add("active");
+        currentCategory = button.dataset.cat;
+        handleSearch();
     };
 });
 
