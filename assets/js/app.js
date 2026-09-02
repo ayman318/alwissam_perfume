@@ -146,10 +146,14 @@ async function loadProducts() {
             throw new Error(await r.text());
         }
         const data = await r.json();
-        products = data.map(product => ({
-            ...product,
-            sizes: product.product_sizes || []
-        }));
+        products = data.map(product => {
+            // ترتيب الأحجام تصاعدياً لضمان ظهور 30 ثم 50 ثم 80 ثم 100
+            const sizes = (product.product_sizes || []).sort((a, b) => Number(a.size_ml) - Number(b.size_ml));
+            return {
+                ...product,
+                sizes
+            };
+        });
         renderProducts();
     } catch (error) {
         console.error("Products error:", error);
@@ -188,18 +192,24 @@ function renderProducts() {
 
         let priceHTML = "";
         let hasDiscount = false;
-        let discountLabel = "";
+        let maxDiscountPercent = 0;
+
+        // التحقق من وجود خصم في أي حجم من أحجام العطر
+        sizes.forEach(s => {
+            if (s.discount_enabled && Number(s.discount_value) > 0) {
+                hasDiscount = true;
+                const pct = s.discount_type === "percent" 
+                    ? Number(s.discount_value) 
+                    : Math.round((Number(s.discount_value) / Number(s.price)) * 100);
+                if (pct > maxDiscountPercent) maxDiscountPercent = pct;
+            }
+        });
 
         if (firstSize) {
             const finalPrice = fp(firstSize);
             const originalPrice = Number(firstSize.price || 0);
 
             if (firstSize.discount_enabled && finalPrice < originalPrice) {
-                hasDiscount = true;
-                discountLabel = firstSize.discount_type === "percent" 
-                    ? `خصم ${firstSize.discount_value}%` 
-                    : `خصم ${firstSize.discount_value} ج`;
-
                 priceHTML = `
                     <div class="price-box">
                         <del>${money(originalPrice)}</del>
@@ -224,7 +234,7 @@ function renderProducts() {
             ? `<span class="badge-offer">🎁 اشتري 2 وخد 1 هدية</span>` 
             : "";
         const discountBadge = hasDiscount 
-            ? `<span class="badge-discount">${discountLabel}</span>` 
+            ? `<span class="badge-discount">خصم ${maxDiscountPercent}%</span>` 
             : "";
 
         return `
@@ -249,7 +259,7 @@ function renderProducts() {
                     ${priceHTML}
                     ${
                         sizes.length
-                        ? `<small>${sizes.map(s => `${s.size_ml} ml`).join(" • ")}</small>`
+                        ? `<small style="display:block;margin:6px 0;color:#cba33f;">${sizes.map(s => `${s.size_ml} ml`).join(" • ")}</small>`
                         : ""
                     }
                     <button onclick='showProduct(${JSON.stringify(product).replace(/</g, "\\u003c")})'>
@@ -362,7 +372,7 @@ function pickSize(id) {
 }
 
 /* =========================
-   CART
+   CART & ACTION PROMPT
 ========================= */
 
 function add() {
@@ -388,7 +398,44 @@ function add() {
         });
     }
     save();
-    showCart();
+
+    // إظهار خياري إكمال التسوق أو إتمام الشراء
+    showAddedConfirmation();
+}
+
+function showAddedConfirmation() {
+    const modalContent = document.getElementById("modalContent");
+    const { totalQty, finalTotal, earnedFreeGifts } = calcCartTotal();
+
+    modalContent.innerHTML = `
+        <div style="text-align:center; padding: 25px 15px;">
+            <div style="font-size:45px; margin-bottom:10px;">🎉</div>
+            <h2 style="color:#d6b34b; margin:0 0 8px;">تمت إضافة العطر إلى السلة!</h2>
+            <p style="color:#bbb; font-size:15px; margin:0 0 15px;">
+                <b>${esc(current.name)}</b> (${currentSize.size_ml} ml) × ${qty}
+            </p>
+
+            ${earnedFreeGifts > 0 ? `
+                <div style="background:rgba(34,197,94,0.12);border:1px solid #22c55e;padding:10px;border-radius:8px;color:#4ade80;font-size:13px;font-weight:bold;margin-bottom:15px;">
+                    🎁 مبروك! طلبك أصبح مؤهلاً للحصول على (${earnedFreeGifts}) قطعة هدية مجاناً!
+                </div>
+            ` : ""}
+
+            <div style="background:#181818; padding:12px; border-radius:8px; border:1px solid #333; margin-bottom:20px; font-size:14px;">
+                عدد القطع بالسلة الآن: <b>${totalQty}</b> | الإجمالي: <b style="color:#d6b34b;">${money(finalTotal)}</b>
+            </div>
+
+            <div class="added-actions">
+                <button class="btn-continue" onclick="closeModal()">
+                    🛍️ إكمال التسوق
+                </button>
+                <button class="btn-checkout" onclick="showCart()">
+                    💳 إتمام الشراء
+                </button>
+            </div>
+        </div>
+    `;
+    document.getElementById("modal").classList.add("show");
 }
 
 function save() {
@@ -414,6 +461,7 @@ function showCart() {
             <div class="empty">
                 <h2>🛒 السلة فارغة</h2>
                 <p>أضف المنتجات التي تريد طلبها.</p>
+                <button class="gold" onclick="closeModal()" style="margin-top:15px;">تصفح العطور الآن</button>
             </div>
         `;
         document.getElementById("modal").classList.add("show");
