@@ -28,8 +28,126 @@ $("sizeDiscountEnabled").onchange=toggleDiscount;
 $("sizeForm").onsubmit=async e=>{e.preventDefault();try{let size=Number($("sizeMl").value),price=Number($("sizePrice").value),on=$("sizeDiscountEnabled").checked,value=Number($("discountValue").value||0);if(!price&&price!==0)throw Error("اكتب السعر.");await rest("product_sizes",{method:"POST",headers:{Prefer:"return=minimal"},body:JSON.stringify({product_id:sizeProductId,size_ml:size,price,discount_enabled:on,discount_type:on?$("discountType").value:"percent",discount_value:on?value:0})});$("sizeModal").classList.remove("show");message("تم حفظ الحجم والسعر");loadProducts()}catch(x){message(x.message,true)}}
 async function deleteSize(id){if(!confirm("حذف الحجم؟"))return;try{await rest(`product_sizes?id=eq.${id}`,{method:"DELETE"});message("تم حذف الحجم");loadProducts()}catch(e){message(e.message,true)}}
 
-// تعديل دالة عرض الطلبات مع زر الحذف
-async function loadOrders(){try{orders=await rest("orders?select=*&order=id.desc")||[];$("ordersList").innerHTML=orders.length?orders.map(o=>`<article class="order-card"><div class="order-top"><strong>طلب #${o.id}</strong><span>${esc(o.status||"pending")}</span></div><p>👤 ${esc(o.customer_name||"—")}</p><p>📱 ${esc(o.phone||"—")}</p><p>📍 ${esc(o.address||"—")}</p><p>💰 ${money(o.total)}</p><div style="display:flex;gap:8px;align-items:center;margin-top:10px;"><select style="flex:1" onchange="changeStatus(${o.id},this.value)">${["pending","confirmed","shipped","delivered","cancelled"].map(s=>`<option value="${s}" ${o.status===s?"selected":""}>${s}</option>`).join("")}</select><button class="btn danger" onclick="deleteOrder(${o.id})" style="padding:6px 12px;">🗑️ حذف</button></div></article>`).join(""):'<div class="empty">📦 لا توجد طلبات.</div>';stats()}catch(e){$("ordersList").innerHTML=`<div class="empty">❌ ${esc(e.message)}</div>`}}
+// عرض الطلبات مع زري الطباعة والحذف
+async function loadOrders(){
+  try{
+    orders=await rest("orders?select=*&order=id.desc")||[];
+    $("ordersList").innerHTML=orders.length?orders.map(o=>`
+      <article class="order-card">
+        <div class="order-top"><strong>طلب #${o.id}</strong><span>${esc(o.status||"pending")}</span></div>
+        <p>👤 ${esc(o.customer_name||"—")}</p>
+        <p>📱 ${esc(o.phone||"—")}</p>
+        <p>📍 ${esc(o.address||"—")}</p>
+        <p>💰 ${money(o.total)}</p>
+        <div style="display:flex;gap:6px;align-items:center;margin-top:10px;flex-wrap:wrap;">
+          <select style="flex:1;min-width:110px;" onchange="changeStatus(${o.id},this.value)">
+            ${["pending","confirmed","shipped","delivered","cancelled"].map(s=>`<option value="${s}" ${o.status===s?"selected":""}>${s}</option>`).join("")}
+          </select>
+          <button class="btn" onclick="printInvoice(${o.id})" style="padding:6px 10px;background:#2563eb;color:#fff;">🖨️ طباعة</button>
+          <button class="btn danger" onclick="deleteOrder(${o.id})" style="padding:6px 10px;">🗑️ حذف</button>
+        </div>
+      </article>
+    `).join(""):'<div class="empty">📦 لا توجد طلبات.</div>';
+    stats();
+  }catch(e){
+    $("ordersList").innerHTML=`<div class="empty">❌ ${esc(e.message)}</div>`;
+  }
+}
+
+// دالة توليد وطباعة الفاتورة
+async function printInvoice(id){
+  const order = orders.find(x=>Number(x.id)===Number(id));
+  if(!order) return alert("تعذر العثور على الطلب");
+
+  let items = [];
+  try {
+    items = await rest(`order_items?order_id=eq.${id}`) || [];
+  } catch(e) {
+    console.warn("تعذر جلب تفاصيل المنتجات:", e);
+  }
+
+  const storeName = settingsRow?.store_name || "الوسام للعطور";
+  const dateStr = order.created_at ? new Date(order.created_at).toLocaleString("ar-EG") : new Date().toLocaleString("ar-EG");
+
+  const printWin = window.open("", "_blank", "width=850,height=750");
+  printWin.document.write(`
+    <!DOCTYPE html>
+    <html lang="ar" dir="rtl">
+    <head>
+      <meta charset="utf-8">
+      <title>فاتورة طلب #${order.id}</title>
+      <style>
+        body { font-family: 'Cairo', Tahoma, Arial, sans-serif; padding: 25px; color: #111; direction: rtl; }
+        .invoice-header { text-align: center; border-bottom: 2px dashed #444; padding-bottom: 15px; margin-bottom: 20px; }
+        .invoice-header h1 { margin: 0 0 5px; font-size: 24px; color: #111; }
+        .invoice-header p { margin: 3px 0; color: #555; }
+        .info-box { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; font-size: 14px; background: #fafafa; padding: 14px; border: 1px solid #e5e5e5; border-radius: 6px; }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 14px; }
+        th, td { border: 1px solid #ddd; padding: 10px; text-align: center; }
+        th { background: #f3f3f3; }
+        .total-box { text-align: left; font-size: 17px; font-weight: bold; margin-top: 15px; padding-left: 10px; }
+        .footer { text-align: center; margin-top: 40px; font-size: 13px; color: #777; border-top: 1px solid #eee; padding-top: 15px; }
+        @media print {
+          body { padding: 0; }
+        }
+      </style>
+    </head>
+    <body>
+      <div class="invoice-header">
+        <h1>${esc(storeName)}</h1>
+        <p>فاتورة شراء رقم: #${order.id}</p>
+        <small>${dateStr}</small>
+      </div>
+      <div class="info-box">
+        <div><strong>العميل:</strong> ${esc(order.customer_name || "—")}</div>
+        <div><strong>الهاتف:</strong> ${esc(order.phone || "—")}</div>
+        <div style="grid-column: 1 / -1;"><strong>العنوان:</strong> ${esc(order.address || "—")}</div>
+        <div><strong>حالة الطلب:</strong> ${esc(order.status || "معلق")}</div>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>المنتج</th>
+            <th>الحجم</th>
+            <th>الكمية</th>
+            <th>السعر</th>
+            <th>الإجمالي</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${items.length ? items.map((it, idx) => `
+            <tr>
+              <td>${idx + 1}</td>
+              <td>${esc(it.product_name || "منتج")}</td>
+              <td>${it.size_ml ? it.size_ml + ' ml' : '—'}</td>
+              <td>${it.quantity}</td>
+              <td>${money(it.final_price || it.original_price)}</td>
+              <td>${money((it.final_price || it.original_price) * it.quantity)}</td>
+            </tr>
+          `).join("") : `
+            <tr>
+              <td colspan="6" style="padding:15px; color:#666;">تفاصيل الطلب: إجمالي فقط (${money(order.total)})</td>
+            </tr>
+          `}
+        </tbody>
+      </table>
+      <div class="total-box">
+        الإجمالي المستحق: ${money(order.total)}
+      </div>
+      <div class="footer">
+        شكراً لاختياركم ${esc(storeName)} 🌹
+      </div>
+      <script>
+        window.onload = function() {
+          window.print();
+        };
+      </script>
+    </body>
+    </html>
+  `);
+  printWin.document.close();
+}
 
 // دالة حذف الطلب
 async function deleteOrder(id){if(!confirm(`هل أنت متأكد من حذف الطلب #${id}؟`))return;try{await rest(`orders?id=eq.${id}`,{method:"DELETE"});message("تم حذف الطلب بنجاح");await loadOrders()}catch(e){message("لم يتم الحذف: "+e.message,true)}}
