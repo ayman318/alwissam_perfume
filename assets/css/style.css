@@ -42,6 +42,7 @@ header{position:sticky;top:0;z-index:20;background:#0b0b0bf2;border-bottom:1px s
 }
 
 .card{
+  position:relative;
   background:#111;
   border:1px solid #292929;
   border-radius:14px;
@@ -62,6 +63,36 @@ header{position:sticky;top:0;z-index:20;background:#0b0b0bf2;border-bottom:1px s
 .card strong{color:#d6b34b}
 .card button{width:100%;margin-top:12px;background:#191919;border:1px solid #4f3e16;color:#d6b34b;padding:10px;border-radius:8px;cursor:pointer;transition:all .3s}
 .card button:hover{background:#d6b34b;color:#111}
+
+/* شارات العرض والخصم فوق الصورة */
+.badges-container{
+  position:absolute;
+  top:10px;
+  right:10px;
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+  z-index:5;
+  pointer-events:none;
+}
+.badge-offer{
+  background:linear-gradient(135deg,#d6b34b,#9d7515);
+  color:#080808;
+  font-size:11px;
+  font-weight:800;
+  padding:4px 9px;
+  border-radius:6px;
+  box-shadow:0 3px 8px rgba(0,0,0,.5);
+}
+.badge-discount{
+  background:#dc2626;
+  color:#fff;
+  font-size:11px;
+  font-weight:800;
+  padding:4px 9px;
+  border-radius:6px;
+  box-shadow:0 3px 8px rgba(0,0,0,.5);
+}
 
 .empty{text-align:center;color:#777;grid-column:1/-1;padding:60px}
 
