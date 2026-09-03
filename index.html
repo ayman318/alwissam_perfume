@@ -24,7 +24,7 @@
       تتبع طلبك
     </button>
     
-    <!-- زر المفضلة (تم نقله هنا ليظهر في البار العلوي معهم) -->
+    <!-- زر المفضلة في البار العلوي -->
     <button class="icon-action-btn" onclick="openWishlistModal()" title="المفضلة">
       ❤️ <span id="wishlistCount">0</span>
     </button>
@@ -34,7 +34,7 @@
       🛒 <span class="cart-text" data-i18n="cart">السلة</span> <i id="cartCount">0</i>
     </button>
 
-    <!-- زر فتح القائمة الجانبية (للثيمات واللغة فقط) -->
+    <!-- زر فتح القائمة الجانبية (للثيمات واللغة) -->
     <button class="icon-action-btn" onclick="toggleSideMenu()" title="القائمة">
       ⚙️ القائمة
     </button>
@@ -49,9 +49,9 @@
     <button class="side-menu-close" onclick="toggleSideMenu()">×</button>
   </div>
 
-  <div class="side-menu-group">
+  <div class="side-menu-group" style="margin-top: 15px;">
     <label>🎨 اختر الثيم المفضّل</label>
-    <select id="themeSelector" class="custom-select-box" style="width:100%; padding:10px;">
+    <select id="themeSelector" class="custom-select-box" style="width:100%; padding:10px; margin-top:6px;">
       <option value="dark">🌙 داكن فخم</option>
       <option value="light">☀️ كريمي ناعم</option>
       <option value="royal">💎 ملكي أزرق</option>
@@ -59,9 +59,9 @@
     </select>
   </div>
 
-  <div class="side-menu-group">
+  <div class="side-menu-group" style="margin-top: 15px;">
     <label>🌐 لغة المتجر / Language</label>
-    <select id="langSelector" class="custom-select-box" style="width:100%; padding:10px;">
+    <select id="langSelector" class="custom-select-box" style="width:100%; padding:10px; margin-top:6px;">
       <option value="ar">العربية</option>
       <option value="en">English</option>
     </select>
