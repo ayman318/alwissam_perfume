@@ -28,7 +28,29 @@ function renderProducts(){if(!products.length){$("productsList").innerHTML='<div
 $("newProductBtn").onclick=()=>openProduct();
 function openProduct(id){$("productModal").classList.add("show");$("productModalTitle").textContent=id?"تعديل المنتج":"إضافة منتج";$("editProductId").value=id||"";$("productForm").reset();$("productActive").checked=true;$("imagePreview").classList.add("hidden");if(id){let p=products.find(x=>Number(x.id)===Number(id));$("productName").value=p.name||"";$("productCategory").value=p.category||"";$("productDescription").value=p.description||"";$("productActive").checked=p.active!==false;if(p.image){$("imagePreview").src=p.image;$("imagePreview").classList.remove("hidden")}}}
 $("productImageFile").onchange=()=>{let f=$("productImageFile").files[0];if(f){$("imagePreview").src=URL.createObjectURL(f);$("imagePreview").classList.remove("hidden")}}
-async function uploadImage(f){let ext=(f.name.split(".").pop()||"jpg").toLowerCase().replace(/[^a-z0-9]/g,"")||"jpg",path=`products/${crypto.randomUUID()}.${ext}`,r=await fetch(`${SB.url}/storage/v1/object/product-images/${path}`,{method:"POST",headers:{apikey:SB.key,Authorization:`Bearer ${token}`,"Content-Type":f.type||"application/octet-stream","x-upsert":"true"},body:f});if(!r.ok)throw Error("فشل رفع الصورة: "+await r.text());return `${SB.url}/storage/v1/object/public/product-images/${path}`}
+
+async function uploadImage(f){
+    try {
+        let ext=(f.name.split(".").pop()||"jpg").toLowerCase().replace(/[^a-z0-9]/g,"")||"jpg";
+        let path=`products/${crypto.randomUUID()}.${ext}`;
+        let r=await fetch(`${SB.url}/storage/v1/object/product-images/${path}`,{
+            method:"POST",
+            headers:{
+                apikey:SB.key,
+                Authorization:`Bearer ${token}`,
+                "Content-Type":f.type||"application/octet-stream",
+                "x-upsert":"true"
+            },
+            body:f
+        });
+        if(!r.ok) throw Error("فشل رفع الصورة: "+await r.text());
+        return `${SB.url}/storage/v1/object/public/product-images/${path}`;
+    } catch(err) {
+        console.error("Upload error:", err);
+        throw err;
+    }
+}
+
 $("productForm").onsubmit=async e=>{e.preventDefault();try{let id=$("editProductId").value,f=$("productImageFile").files[0],payload={name:$("productName").value.trim(),category:$("productCategory").value,description:$("productDescription").value.trim(),active:$("productActive").checked,updated_at:new Date().toISOString()};if(f)payload.image=await uploadImage(f);if(!payload.name||!payload.category)throw Error("اكتب اسم المنتج واختر القسم.");if(id)await rest(`products?id=eq.${id}`,{method:"PATCH",headers:{Prefer:"return=minimal"},body:JSON.stringify(payload)});else await rest("products",{method:"POST",headers:{Prefer:"return=minimal"},body:JSON.stringify(payload)});$("productModal").classList.remove("show");message(id?"تم تعديل المنتج":"تم إضافة المنتج");loadProducts()}catch(x){message(x.message,true)}}
 async function deleteProduct(id){if(!confirm("حذف المنتج؟"))return;try{await rest(`products?id=eq.${id}`,{method:"DELETE"});message("تم حذف المنتج");loadProducts()}catch(e){message("لم يتم الحذف: "+e.message,true)}}
 
@@ -86,7 +108,6 @@ $("sizeForm").onsubmit = async e => {
 
 async function deleteSize(id){if(!confirm("حذف الحجم؟"))return;try{await rest(`product_sizes?id=eq.${id}`,{method:"DELETE"});message("تم حذف الحجم");loadProducts()}catch(e){message(e.message,true)}}
 
-// عرض الطلبات وجلب المنتجات والملاحظات
 async function loadOrders(){
   try{
     orders = await rest("orders?select=*,order_items(*)&order=id.desc") || [];
@@ -127,7 +148,6 @@ async function loadOrders(){
   }
 }
 
-// طباعة فاتورة مفردة بها كافة التفاصيل والقطع والملاحظات
 async function printInvoice(id){
   const order = orders.find(x => Number(x.id) === Number(id));
   if(!order) return alert("تعذر العثور على الطلب");
@@ -146,7 +166,7 @@ async function printInvoice(id){
   const arabicStatus = orderStatusLabels[order.status] || order.status || "قيد الانتظار";
 
   const printWin = window.open("", "_blank", "width=850,height=750");
-  if(!printWin) return alert("يرجى السماح بالنوافذ المنبثقة (Pop-ups) للمتصفح للطباعة");
+  if(!printWin) return alert("يرجى السماح بالنوافذ المنبثقة للطباعة");
 
   printWin.document.write(`
     <!DOCTYPE html>
@@ -188,7 +208,7 @@ async function printInvoice(id){
             <th>#</th>
             <th>اسم العطر / المنتج</th>
             <th>الحجم</th>
-            <th>الكمية (القطع)</th>
+            <th>الكمية</th>
             <th>سعر القطعة</th>
             <th>الإجمالي</th>
           </tr>
@@ -205,7 +225,7 @@ async function printInvoice(id){
             </tr>
           `).join("") : `
             <tr>
-              <td colspan="6" style="padding:15px; color:#888;">لم يتم تسجيل عناصر تفصيلية لهذا الطلب القديم. الإجمالي: ${money(order.total)}</td>
+              <td colspan="6" style="padding:15px; color:#888;">الإجمالي: ${money(order.total)}</td>
             </tr>
           `}
         </tbody>
@@ -216,16 +236,13 @@ async function printInvoice(id){
       <div class="footer">
         شكراً لاختياركم ${esc(storeName)} 🌹
       </div>
-      <script>
-        window.onload = function() { window.print(); };
-      </script>
+      <script>window.onload = function() { window.print(); };</script>
     </body>
     </html>
   `);
   printWin.document.close();
 }
 
-// دالة طباعة كل الطلبات مع الملاحظات
 function printAllOrders(){
   if(!orders.length) return alert("لا توجد طلبات حالياً لطباعتها");
 
@@ -234,7 +251,7 @@ function printAllOrders(){
   const totalSales = orders.reduce((sum, o) => sum + Number(o.total || 0), 0);
 
   const printWin = window.open("", "_blank", "width=950,height=750");
-  if(!printWin) return alert("يرجى السماح بالنوافذ المنبثقة (Pop-ups) للمتصفح للطباعة");
+  if(!printWin) return alert("يرجى السماح بالنوافذ المنبثقة للطباعة");
 
   printWin.document.write(`
     <!DOCTYPE html>
@@ -266,7 +283,7 @@ function printAllOrders(){
             <th>العميل</th>
             <th>الهاتف</th>
             <th>العنوان</th>
-            <th>المنتجات المطلوبة</th>
+            <th>المنتجات</th>
             <th>ملاحظات</th>
             <th>الحالة</th>
             <th>الإجمالي</th>
@@ -293,16 +310,13 @@ function printAllOrders(){
       <div class="total-summary">
         إجمالي المبيعات الكلي: ${money(totalSales)}
       </div>
-      <script>
-        window.onload = function() { window.print(); };
-      </script>
+      <script>window.onload = function() { window.print(); };</script>
     </body>
     </html>
   `);
   printWin.document.close();
 }
 
-// دالة حذف الطلب
 async function deleteOrder(id){if(!confirm(`هل أنت متأكد من حذف الطلب #${id}؟`))return;try{await rest(`orders?id=eq.${id}`,{method:"DELETE"});message("تم حذف الطلب بنجاح");await loadOrders()}catch(e){message("لم يتم الحذف: "+e.message,true)}}
 
 async function changeStatus(id,status){try{await rest(`orders?id=eq.${id}`,{method:"PATCH",headers:{Prefer:"return=minimal"},body:JSON.stringify({status})});message("تم تحديث الحالة");await loadOrders();}catch(e){message(e.message,true)}}
