@@ -116,9 +116,9 @@ header{
   color:var(--text-main);
   border:1px solid var(--border-color);
   border-radius:18px;
-  padding:6px 10px;
+  padding:8px 12px;
   font-family:inherit;
-  font-size:12px;
+  font-size:13px;
   font-weight:700;
   cursor:pointer;
   outline:none;
@@ -169,6 +169,83 @@ header{
   font-weight:800;
 }
 .cart-btn:hover i{background:#111;color:var(--gold-main)}
+
+/* ===================================================
+   تنسيق القائمة الجانبية (Sidebar Drawer) للثيمات واللغة
+=================================================== */
+.side-menu-drawer {
+  position: fixed;
+  top: 0;
+  right: -320px;
+  width: 300px;
+  height: 100%;
+  background: var(--bg-surface);
+  border-left: 1px solid var(--border-color);
+  box-shadow: -10px 0 30px rgba(0,0,0,0.5);
+  z-index: 1000;
+  transition: right 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  padding: 25px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+[dir="ltr"] .side-menu-drawer {
+  right: auto;
+  left: -320px;
+  border-left: none;
+  border-right: 1px solid var(--border-color);
+  box-shadow: 10px 0 30px rgba(0,0,0,0.5);
+  transition: left 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.side-menu-drawer.open {
+  right: 0;
+}
+[dir="ltr"] .side-menu-drawer.open {
+  left: 0;
+}
+
+.side-menu-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.7);
+  backdrop-filter: blur(4px);
+  z-index: 999;
+  display: none;
+}
+.side-menu-overlay.show {
+  display: block;
+}
+
+.side-menu-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 15px;
+}
+.side-menu-header h3 {
+  color: var(--gold-main);
+  margin: 0;
+  font-size: 18px;
+}
+.side-menu-close {
+  background: none;
+  border: none;
+  color: var(--text-main);
+  font-size: 24px;
+  cursor: pointer;
+}
+
+.side-menu-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.side-menu-group label {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-muted);
+}
 
 /* قسم الهيرو الفخم */
 .hero{
