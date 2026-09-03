@@ -128,42 +128,10 @@ function toggleSideMenu() {
     let drawer = document.getElementById("sideMenuDrawer");
     let overlay = document.getElementById("sideMenuOverlay");
     
-    if (!drawer) {
-        // إنشاء القائمة الجانبية برمجياً إذا لم تكن موجودة في HTML
-        const drawerHtml = `
-            <div id="sideMenuOverlay" class="side-menu-overlay" onclick="toggleSideMenu()"></div>
-            <div id="sideMenuDrawer" class="side-menu-drawer">
-              <div class="side-menu-header">
-                <h3>إعدادات المتجر</h3>
-                <button class="side-menu-close" onclick="toggleSideMenu()">×</button>
-              </div>
-              <div class="side-menu-group">
-                <label>🎨 اختر الثيم المفضّل</label>
-                <select id="themeSelector" class="custom-select-box" style="width:100%; padding:10px;">
-                  <option value="dark">🌙 داكن فخم</option>
-                  <option value="light">☀️ كريمي ناعم</option>
-                  <option value="royal">💎 ملكي أزرق</option>
-                  <option value="emerald">🌿 زمردي أخضر</option>
-                </select>
-              </div>
-              <div class="side-menu-group">
-                <label>🌐 لغة المتجر / Language</label>
-                <select id="langSelector" class="custom-select-box" style="width:100%; padding:10px;">
-                  <option value="ar">العربية</option>
-                  <option value="en">English</option>
-                </select>
-              </div>
-            </div>
-        `;
-        document.body.insertAdjacentHTML('beforeend', drawerHtml);
-        drawer = document.getElementById("sideMenuDrawer");
-        overlay = document.getElementById("sideMenuOverlay");
-        initTheme();
-        initLanguage();
+    if (drawer && overlay) {
+        drawer.classList.toggle("open");
+        overlay.classList.toggle("show");
     }
-
-    drawer.classList.toggle("open");
-    overlay.classList.toggle("show");
 }
 
 /* ==========================================
@@ -188,7 +156,7 @@ function applyTheme(theme) {
 }
 
 /* ==========================================
-   إدارة اللغات
+   إدارة اللغات (مع معالجة الـ HTML داخل النصوص)
 ========================================== */
 function initLanguage() {
     applyLanguage(currentLang);
@@ -211,7 +179,13 @@ function applyLanguage(lang) {
     const t = translations[lang];
     document.querySelectorAll("[data-i18n]").forEach(el => {
         const key = el.getAttribute("data-i18n");
-        if (t[key]) el.textContent = t[key];
+        if (t[key]) {
+            if (key === "heroTitle") {
+                el.innerHTML = t[key];
+            } else {
+                el.textContent = t[key];
+            }
+        }
     });
 
     const searchInput = document.getElementById("searchInput");
