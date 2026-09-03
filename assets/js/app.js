@@ -122,7 +122,52 @@ const esc = s =>
     }[m]));
 
 /* ==========================================
-   إدارة الثيمات المتعددة (Dark, Light, Royal, Emerald)
+   إدارة القائمة الجانبية (Sidebar Drawer)
+========================================== */
+function toggleSideMenu() {
+    let drawer = document.getElementById("sideMenuDrawer");
+    let overlay = document.getElementById("sideMenuOverlay");
+    
+    if (!drawer) {
+        // إنشاء القائمة الجانبية برمجياً إذا لم تكن موجودة في HTML
+        const drawerHtml = `
+            <div id="sideMenuOverlay" class="side-menu-overlay" onclick="toggleSideMenu()"></div>
+            <div id="sideMenuDrawer" class="side-menu-drawer">
+              <div class="side-menu-header">
+                <h3>إعدادات المتجر</h3>
+                <button class="side-menu-close" onclick="toggleSideMenu()">×</button>
+              </div>
+              <div class="side-menu-group">
+                <label>🎨 اختر الثيم المفضّل</label>
+                <select id="themeSelector" class="custom-select-box" style="width:100%; padding:10px;">
+                  <option value="dark">🌙 داكن فخم</option>
+                  <option value="light">☀️ كريمي ناعم</option>
+                  <option value="royal">💎 ملكي أزرق</option>
+                  <option value="emerald">🌿 زمردي أخضر</option>
+                </select>
+              </div>
+              <div class="side-menu-group">
+                <label>🌐 لغة المتجر / Language</label>
+                <select id="langSelector" class="custom-select-box" style="width:100%; padding:10px;">
+                  <option value="ar">العربية</option>
+                  <option value="en">English</option>
+                </select>
+              </div>
+            </div>
+        `;
+        document.body.insertAdjacentHTML('beforeend', drawerHtml);
+        drawer = document.getElementById("sideMenuDrawer");
+        overlay = document.getElementById("sideMenuOverlay");
+        initTheme();
+        initLanguage();
+    }
+
+    drawer.classList.toggle("open");
+    overlay.classList.toggle("show");
+}
+
+/* ==========================================
+   إدارة الثيمات المتعددة
 ========================================== */
 function initTheme() {
     const savedTheme = localStorage.getItem("wissam_theme") || "dark";
@@ -143,7 +188,7 @@ function applyTheme(theme) {
 }
 
 /* ==========================================
-   إدارة اللغات (عربي / English)
+   إدارة اللغات
 ========================================== */
 function initLanguage() {
     applyLanguage(currentLang);
@@ -163,7 +208,6 @@ function applyLanguage(lang) {
     document.documentElement.setAttribute("lang", lang);
     document.documentElement.setAttribute("dir", lang === "ar" ? "rtl" : "ltr");
     
-    // تحديث النصوص الثابتة في الصفحة بناءً على القاموس
     const t = translations[lang];
     document.querySelectorAll("[data-i18n]").forEach(el => {
         const key = el.getAttribute("data-i18n");
@@ -228,7 +272,7 @@ function openWishlistModal() {
     document.getElementById("modal").classList.add("show");
 }
 
-/* السعر النهائي بعد الخصم */
+/* السعر النهائي */
 function fp(size) {
     const price = Number(size?.price || 0);
     if (!size?.discount_enabled) return price;
@@ -237,16 +281,6 @@ function fp(size) {
         return Math.max(0, price - (price * discount / 100));
     }
     return Math.max(0, price - discount);
-}
-
-function discountAmount(size) {
-    const price = Number(size?.price || 0);
-    if (!size?.discount_enabled) return 0;
-    const discount = Number(size?.discount_value || 0);
-    if (size.discount_type === "percent") {
-        return price * discount / 100;
-    }
-    return discount;
 }
 
 function calcCartTotal() {
@@ -387,7 +421,6 @@ function renderProducts() {
 function handleSearch() {
     const searchInput = document.getElementById("searchInput");
     const query = searchInput ? searchInput.value.trim().toLowerCase() : "";
-    let visibleIndex = 0;
 
     document.querySelectorAll(".card").forEach(card => {
         const matchCategory = currentCategory === "all" || card.dataset.cat === currentCategory;
@@ -395,7 +428,6 @@ function handleSearch() {
 
         if (matchCategory && matchName) {
             card.style.display = "";
-            visibleIndex++;
         } else {
             card.style.display = "none";
         }
@@ -433,7 +465,7 @@ function showCart() {
         return;
     }
 
-    const { totalQty, earnedFreeGifts, finalTotal } = calcCartTotal();
+    const { finalTotal } = calcCartTotal();
 
     const rows = cart.map((item, index) => {
         const final = fp(item.size);
@@ -489,7 +521,7 @@ async function sendOrder(event) {
     const phone = document.getElementById("customerPhone").value.trim();
     const address = document.getElementById("customerAddress").value.trim();
     const notes = document.getElementById("customerNotes")?.value.trim() || "";
-    const { finalTotal, earnedFreeGifts } = calcCartTotal();
+    const { finalTotal } = calcCartTotal();
 
     try {
         const orderResponse = await fetch(`${API_CONFIG.url}/rest/v1/orders`, {
