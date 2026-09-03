@@ -489,31 +489,141 @@ function normalizeWhatsApp(number) {
     return value;
 }
 
+/* =========================
+   دالة بناء رسالة الواتساب وإرسال الطلب
+========================= */
+function buildWhatsAppMessage(orderId, name, phone, address, notes, total, earnedFreeGifts) {
+    let message = "";
+    message += "🛍️ *طلب جديد - الوسام للعطور*\n━━━━━━━━━━━━━━\n\n";
+    message += `🔢 رقم الطلب: #${orderId}\n`;
+    message += `👤 العميل: ${name}\n`;
+    message += `📱 الهاتف: ${phone}\n`;
+    message += `📍 العنوان: ${address}\n`;
+    if (notes) {
+        message += `📝 ملاحظات العميل: ${notes}\n`;
+    }
+    message += "\n🧴 *تفاصيل المنتجات المطلوبة:*\n";
+
+    cart.forEach((item, index) => {
+        const final = fp(item.size);
+        const itemTotal = final * Number(item.qty);
+        message += `\n${index + 1}. ${item.product.name}\n`;
+        message += `   📏 الحجم: ${item.size.size_ml} ml\n`;
+        message += `   🔢 الكمية: ${item.qty}\n`;
+        message += `   💰 الإجمالي: ${money(itemTotal)}\n`;
+    });
+
+    if (earnedFreeGifts > 0) {
+        message += "\n━━━━━━━━━━━━━━\n";
+        message += `🎁 *العرض الخاص المستحق:* مبروك! مستحق (+${earnedFreeGifts} قطعة هدية مجانية) مع الأوردر!\n`;
+    }
+
+    message += "\n━━━━━━━━━━━━━━\n";
+    message += `💰 *المطلوب دفعه: ${money(total)}*\n\n`;
+    message += "شكراً لاختياركم الوسام للعطور 🌹";
+    return message;
+}
+
+function openWhatsApp(message) {
+    const number = normalizeWhatsApp(storeSettings?.whatsapp);
+    if (!number) {
+        alert("رقم WhatsApp غير موجود في إعدادات المتجر.");
+        return;
+    }
+    const url = `https://wa.me/${number}?text=` + encodeURIComponent(message);
+    window.open(url, "_blank");
+}
+
 async function sendOrder(event) {
     event.preventDefault();
+    if (!cart.length) {
+        alert("السلة فارغة");
+        return;
+    }
+
     const name = document.getElementById("customerName").value.trim();
     const phone = document.getElementById("customerPhone").value.trim();
     const address = document.getElementById("customerAddress").value.trim();
     const notes = document.getElementById("customerNotes")?.value.trim() || "";
-    const { finalTotal } = calcCartTotal();
+    const { finalTotal, earnedFreeGifts } = calcCartTotal();
+
+    let combinedNotes = notes;
+    if (earnedFreeGifts > 0) {
+        combinedNotes = combinedNotes 
+            ? `[🎁 مستحق ${earnedFreeGifts} قطعة هدية ضمن العرض] - ${combinedNotes}` 
+            : `[🎁 مستحق ${earnedFreeGifts} قطعة هدية ضمن العرض]`;
+    }
 
     try {
         const orderResponse = await fetch(`${API_CONFIG.url}/rest/v1/orders`, {
             method: "POST",
             headers: { ...headers, "Content-Type": "application/json", "Prefer": "return=representation" },
-            body: JSON.stringify({ customer_name: name, phone, address, notes, total: finalTotal, status: "pending" })
+            body: JSON.stringify({ 
+                customer_name: name, 
+                phone: phone, 
+                address: address, 
+                notes: combinedNotes, 
+                total: finalTotal, 
+                status: "pending" 
+            })
         });
+
         if (!orderResponse.ok) throw new Error(await orderResponse.text());
         const orderData = await orderResponse.json();
         const order = orderData?.[0];
 
+        if (!order?.id) {
+            throw new Error("تم إنشاء الطلب لكن لم يتم الحصول على رقم الطلب.");
+        }
+
+        // حفظ تفاصيل المنتجات في جدول order_items
+        const items = cart.map(item => {
+            const original = Number(item.size.price || 0);
+            const final = fp(item.size);
+            return {
+                order_id: order.id,
+                product_id: item.product.id,
+                product_name: item.product.name,
+                size_ml: Number(item.size.size_ml),
+                quantity: Number(item.qty),
+                original_price: original,
+                discount: original - final,
+                final_price: final
+            };
+        });
+
+        await fetch(`${API_CONFIG.url}/rest/v1/order_items`, {
+            method: "POST",
+            headers: { ...headers, "Content-Type": "application/json", "Prefer": "return=minimal" },
+            body: JSON.stringify(items)
+        });
+
+        const whatsapp = normalizeWhatsApp(storeSettings?.whatsapp);
+        const whatsappMessage = buildWhatsAppMessage(order.id, name, phone, address, notes, finalTotal, earnedFreeGifts);
+
+        // الاحتفاظ بنسخة مؤقتة للرسالة ثم تفريغ السلة
         cart = [];
         save();
+
         document.getElementById("modalContent").innerHTML = `
             <div class="empty">
                 <h2>✅ تم تسجيل طلبك بنجاح</h2>
                 <p>رقم طلبك: <strong style="color:var(--gold-main); font-size:18px;">#${order.id}</strong></p>
-                <button class="gold full" onclick="closeModal()" style="margin-top:15px;">حسناً</button>
+                <p style="font-size:13px; color:var(--text-muted);">احتفظ برقم الطلب لتتبعه في أي وقت.</p>
+                ${earnedFreeGifts > 0 ? `<p style="color:var(--gold-main);font-weight:bold;">🎁 تم احتساب قطعتك الهدية المجانية وسيتم تجهيزها مع الطلب!</p>` : ""}
+                ${
+                    whatsapp
+                    ? `
+                        <p style="margin-top:12px;">اضغط الزر أدناه لإرسال تفاصيل الأوردر عبر WhatsApp:</p>
+                        <button class="gold full" onclick='openWhatsApp(${JSON.stringify(whatsappMessage)})' style="background:#25d366;color:#fff;margin-top:10px;">
+                            📱 إرسال تفاصيل الأوردر على WhatsApp
+                        </button>
+                    `
+                    : `<p style="color:#ef4444;">⚠️ لم يتم العثور على رقم WhatsApp في إعدادات المتجر.</p>`
+                }
+                <button class="gold full" onclick="closeModal()" style="margin-top:10px">
+                    حسناً
+                </button>
             </div>
         `;
     } catch (error) {
