@@ -19,26 +19,43 @@
   </a>
 
   <div class="header-actions">
-    <!-- زر تتبع حالة الطلب بالاسم الصريح -->
-    <button class="icon-action-btn" onclick="openTrackModal()" title="تتبع حالة طلبك">
+    <!-- قائمة اختيار الثيمات المتعددة -->
+    <select id="themeSelector" class="custom-select-box" title="اختر الثيم المفضّل">
+      <option value="dark">🌙 داكن فخم</option>
+      <option value="light">☀️ كريمي ناعم</option>
+      <option value="royal">💎 ملكي أزرق</option>
+      <option value="emerald">🌿 زمردي أخضر</option>
+    </select>
+
+    <!-- قائمة اختيار اللغة -->
+    <select id="langSelector" class="custom-select-box" title="اللغة / Language">
+      <option value="ar">العربية</option>
+      <option value="en">English</option>
+    </select>
+
+    <!-- زر المفضلة -->
+    <button class="icon-action-btn" onclick="openWishlistModal()" title="المفضلة">
+      ❤️ <span id="wishlistCount">0</span>
+    </button>
+
+    <!-- زر تتبع الطلب -->
+    <button class="icon-action-btn" onclick="openTrackModal()" data-i18n="track">
       تتبع طلبك
     </button>
-    <!-- زر تبديل الوضع الليلي / النهاري -->
-    <button id="themeToggle" class="theme-btn" title="تبديل المظهر" aria-label="تبديل المظهر">
-      <span class="theme-icon">☀️</span>
-    </button>
+
+    <!-- زر السلة -->
     <button class="cart-btn" onclick="openCart()">
-      🛒 <span class="cart-text">السلة</span> <i id="cartCount">0</i>
+      🛒 <span class="cart-text" data-i18n="cart">السلة</span> <i id="cartCount">0</i>
     </button>
   </div>
 </header>
 
 <section class="hero">
   <div class="hero-content">
-    <span class="hero-eyebrow">WISSAM PERFUMES</span>
-    <h1>عطرك عنوان <em>أناقتك</em></h1>
-    <p>اختار عطرك المفضل من مجموعتنا الاستثنائية بلمسات فاخرة تدوم طويلاً.</p>
-    <a href="#storeControls" class="gold hero-cta">تصفح المنتجات</a>
+    <span class="hero-eyebrow" data-i18n="heroEyebrow">WISSAM PERFUMES</span>
+    <h1 data-i18n="heroTitle">عطرك عنوان <em>أناقتك</em></h1>
+    <p data-i18n="heroDesc">اختار عطرك المفضل من مجموعتنا الاستثنائية بلمسات فاخرة تدوم طويلاً.</p>
+    <a href="#storeControls" class="gold hero-cta" data-i18n="heroCta">تصفح المنتجات</a>
   </div>
 </section>
 
@@ -51,18 +68,18 @@
     </div>
     
     <nav class="cats-bar">
-      <button class="active" data-cat="all">✨ الكل</button>
-      <button data-cat="men">👔 رجالي</button>
-      <button data-cat="women">👗 نسائي</button>
-      <button data-cat="unisex">⚖️ للجنسين</button>
-      <button data-cat="original">👑 أورجينال</button>
+      <button class="active" data-cat="all" data-i18n="catAll">✨ الكل</button>
+      <button data-cat="men" data-i18n="catMen">👔 رجالي</button>
+      <button data-cat="women" data-i18n="catWomen">👗 نسائي</button>
+      <button data-cat="unisex" data-i18n="catUnisex">⚖️ للجنسين</button>
+      <button data-cat="original" data-cat-key="original" data-i18n="catOriginal">👑 أورجينال</button>
     </nav>
   </div>
 </div>
 
 <section class="title">
-  <span>OUR COLLECTION</span>
-  <h2>المجموعة المختارة</h2>
+  <span data-i18n="colSub">OUR COLLECTION</span>
+  <h2 data-i18n="colTitle">المجموعة المختارة</h2>
   <div class="title-accent"></div>
 </section>
 
